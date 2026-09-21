@@ -19,6 +19,17 @@ export const errorHandler: ErrorRequestHandler = (
     return;
   }
 
+  if (isMalformedJsonError(error)) {
+    response.status(400).json({
+      success: false,
+      error: {
+        code: "MALFORMED_JSON",
+        message: "Request body contains invalid JSON"
+      }
+    });
+    return;
+  }
+
   response.status(500).json({
     success: false,
     error: {
@@ -27,3 +38,13 @@ export const errorHandler: ErrorRequestHandler = (
     }
   });
 };
+
+function isMalformedJsonError(error: unknown): error is SyntaxError & { status: number } {
+  return (
+    error instanceof SyntaxError &&
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    (error as { status?: unknown }).status === 400
+  );
+}

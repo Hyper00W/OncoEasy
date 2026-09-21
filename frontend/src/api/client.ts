@@ -1,3 +1,5 @@
+import { readAuthSession } from "../auth/storage";
+
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type ApiRequestOptions = Omit<
@@ -31,6 +33,8 @@ export class ApiError extends Error {
   }
 }
 
+export const AUTHENTICATION_INVALIDATED_EVENT = "oncoeasy:authentication-invalidated";
+
 export class ApiClient {
   private readonly baseUrl: string;
   private readonly accessTokenProvider?: AccessTokenProvider;
@@ -52,6 +56,10 @@ export class ApiClient {
   }
 
   post<T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<T> {
+    return this.request<T>("POST", path, { ...options, body });
+  }
+
+  postForm<T>(path: string, body: FormData, options?: ApiRequestOptions): Promise<T> {
     return this.request<T>("POST", path, { ...options, body });
   }
 
@@ -79,7 +87,7 @@ export class ApiClient {
     const headers = new Headers(options.headers);
     headers.set("Accept", "application/json");
 
-    if (options.body !== undefined) {
+    if (options.body !== undefined && !(options.body instanceof FormData)) {
       headers.set("Content-Type", "application/json");
     }
 
@@ -90,7 +98,12 @@ export class ApiClient {
 
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...options,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body:
+        options.body === undefined
+          ? undefined
+          : options.body instanceof FormData
+            ? options.body
+            : JSON.stringify(options.body),
       headers,
       method
     });
@@ -121,14 +134,24 @@ async function readResponseBody(response: Response): Promise<unknown> {
 
 function createApiError(response: Response, body: unknown): ApiError {
   if (isApiErrorResponse(body)) {
-    return new ApiError(response.status, body.error.code, body.error.message);
+    const error = new ApiError(response.status, body.error.code, body.error.message);
+    notifyAuthenticationInvalidated(response.status);
+    return error;
   }
 
-  return new ApiError(
+  const error = new ApiError(
     response.status,
     "HTTP_ERROR",
     response.statusText || "The request failed"
   );
+  notifyAuthenticationInvalidated(response.status);
+  return error;
+}
+
+function notifyAuthenticationInvalidated(status: number): void {
+  if (status === 401 && typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTHENTICATION_INVALIDATED_EVENT));
+  }
 }
 
 function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
@@ -148,4 +171,6 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   );
 }
 
-export const apiClient = new ApiClient();
+export const apiClient = new ApiClient(undefined, () => {
+  return readAuthSession()?.accessToken;
+});

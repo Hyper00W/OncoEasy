@@ -1,0 +1,269 @@
+
+> backend@1.0.0 dev
+> tsx watch src/server.ts
+
+◇ injected env (7) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+7:19:09 pm [tsx] change in ./src\config\env.ts Restarting...
+◇ injected env (7) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+OncoEasy backend listening on port 3000
+7:20:05 pm [tsx] change in ./src\storage\private-storage.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ enable debugging { debug: true }
+OncoEasy backend listening on port 3000
+7:45:15 pm [tsx] change in ./src\config\env.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+OncoEasy backend listening on port 3000
+7:46:05 pm [tsx] change in ./src\storage\private-storage.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+OncoEasy backend listening on port 3000
+7:47:12 pm [tsx] change in ./src\modules\labs\lab.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+7:47:39 pm [tsx] change in ./src\modules\pap\pap.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ enable debugging { debug: true }
+OncoEasy backend listening on port 1:47:13 am [tsx] change in ./src\server.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ enable debugging { debug: true }
+Invalid backend environment configuration:
+  - PORT: Too small: expected number to be >=1
+Fix the environment configuration and start the server again.
+ce.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+OncoEasy backend listening on port 3000
+8:21:26 pm [tsx] change in ./src\modules\stories\stories.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+OncoEasy backend listening on port 3000
+8:21:48 pm [tsx] change in ./src\modules\stories\stories.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ override existing { override: true }
+OncoEasy backend listening on port 3000
+3:00:31 pm [tsx] change in ./src\config\env.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+OncoEasy backend listening on port 3000
+4:31:11 pm [tsx] change in ./src\config\env.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+5:07:06 pm [tsx] change in ./src\config\env.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+OncoEasy backend listening on port 3000
+5:26:17 pm [tsx] change in ./src\modules\pharmacy\payments\payment.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ enable debugging { debug: true }
+OncoEasy backend listening on port 3000
+5:27:45 pm [tsx] change in ./src\modules\pharmacy\payments\payment.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+5:29:10 pm [tsx] change in ./src\modules\pharmacy\payments\payment.schemas.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ override existing { override: true }
+OncoEasy backend listening on port 3000
+5:30:55 pm [tsx] change in ./src\modules\pharmacy\payments\payment.routes.ts Restarting...
+◇ injected env (7) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+OncoEasy backend listening on port 3000
+5:32:14 pm [tsx] change in ./src\app.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ suppress logs { quiet: true }
+OncoEasy backend listening on port 3000
+5:59:34 pm [tsx] change in ./src\modules\pharmacy\payments\payment.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+6:26:44 pm [tsx] change in ./src\modules\pharmacy\payments\payment.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+6:30:24 pm [tsx] change in ./src\modules\pharmacy\payments\payment.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+7:35:35 pm [tsx] change in ./src\config\env.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+OncoEasy backend listening on port 3000
+7:58:09 pm [tsx] change in ./src\modules\labs\lab.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ override existing { override: true }
+OncoEasy backend listening on port 3000
+7:58:15 pm [tsx] change in ./src\modules\labs\lab.service.ts Restarting...
+◇ injected env (7) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1019:50
+    at responseCallbacks.<computenode:internal/modules/run_mnode:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1019:50
+    at respon7:58:29 pm [tsx] change in ./src\modules\labs\lab.schemas.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ override existing { override: true }
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1019:50
+    at responsenode:internal/node:node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1019:50
+    at responseCallbacks.<computed> (C:7:58:40 pm [tsx] change in ./src\modules\labs\lab.controller.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1019:50
+    at responseCallbacks.<computed> (C:\Unode:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1019:50
+    at responseCallbacks.<comput7:58:48 pm [tsx] change in ./src\modules\labs\lab.routes.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1019:50
+    at responseCallbacks.<computed> (C:\Users\aadimnode:internal/modules/run_mainnode:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:17:59:30 pm [tsx] change in ./src\modules\labs\lab.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1019:50
+    at responsenode:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Transform failed with 2 errors:
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: Multiple exports with the same name "recordExternalBooking"
+C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\modules\labs\lab.service.ts:127:22: ERROR: The symbol "recordExternalBooking" has already been declared
+    at failureErrorWithLog (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1752:15)
+    at C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\esbuild\lib\main.js:1019:50
+    at responseCallbacks.<computed> (C:\Users\aadim\Music\8:03:51 pm [tsx] change in ./src\modules\labs\lab.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ enable debugging { debug: true }
+OncoEasy backend listening on port 3000
+8:04:19 pm [tsx] change in ./src\modules\labs\lab.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+8:04:59 pm [tsx] change in ./src\modules\labs\lab.controller.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+8:11:03 pm [tsx] change in ./src\modules\labs\lab.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+OncoEasy backend listening on port 3000
+8:26:36 pm [tsx] change in ./src\modules\pharmacy\delivery-agent\delivery-agent.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ enable debugging { debug: true }
+OncoEasy backend listening on port 3000
+8:38:20 pm [tsx] change in ./src\modules\pharmacy\delivery-agent\delivery-agent.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+OncoEasy backend listening on port 3000
+8:43:33 pm [tsx] change in ./src\modules\pharmacy\delivery-agent\delivery-agent.service.ts Rerunning...
+◇ injected env (7) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+OncoEasy backend listening on port 3000
+1:47:06 am [tsx] change in ./src\config\env.ts Rerunning...
+1:47:13 am [tsx] change in ./src\server.ts Restarting...
+◇ injected env (7) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+node:events:505
+    throw er; // Unhandled 'error' event
+    ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:2328:16)
+    at listenInCluster (node:net:2437:12)
+    at Server.listen (node:net:2562:7)
+    at app (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\server.ts:9:8)
+    at Object.<anonymous> (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\server.ts:35:51)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\tsx\dist\register-OY9cqBEN.cjs:9:3619)
+    at Modulenode:events:505
+    throw er; // Unhandled 'erronode9:20:22 am [tsx] change in ./src\modules\auth\auth.routes.ts Restarting...
+◇ injected env (6) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+node:events:505
+    throw er; // Unhandled 'error' event
+    ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:2328:16)
+    at listenInCluster (node:net:2437:12)
+    at Server.listen (node:net:2562:7)
+    at app (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\server.ts:9:8)
+    at Object.<anonymous> (C:\Users\aanode:events:505
+    throw er; // Unhandled 'error' event
+    ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:2328:16)
+    at listenInCluster (node:net:2437:12)
+    at Server.listen (node:net:2562:7)
+    at app (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\server.ts:9:8)
+    at Object.<anonymous> (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\server.ts:35:51)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\tsx\dist\register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modnode:events:505
+    throw er; // Unhandled 'error' event
+    ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:2328:16)
+    at listenInCluster (node:net:2437:12)
+    at Server.listen (node:net:2562:7)
+    at app (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\server.ts:9:8)
+    at Object.<anonymous> (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\src\server.ts:35:51)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (C:\Users\aadim\Music\Onco Final\OncoEasy\backend\node_modules\tsx\dist\register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:2416:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+
+Node.js v24.21.0
+ port: 3000
+}
+
+Node.js v24.21.0
+
+}
+
+Node.js v24.21.0

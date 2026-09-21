@@ -33,7 +33,12 @@ export const validateRequest = (
       continue;
     }
 
-    Object.assign(request, { [part]: result.data });
+    Object.defineProperty(request, part, {
+      configurable: true,
+      enumerable: true,
+      value: result.data,
+      writable: true
+    });
   }
 
   if (validationMessages.length > 0) {

@@ -1,0 +1,16 @@
+import type { RequestHandler } from "express";
+
+import { createAdminTrial, createTrialInterest, getAdminTrial, getPublishedTrial, listAdminInterests, listAdminTrials, listPatientInterests, listPublishedTrials, publishAdminTrial, updateAdminTrial, updateInterestStatus } from "./trials.service";
+import type { CreateInterestInput, CreateTrialInput, TrialListQuery, UpdateInterestStatusInput, UpdateTrialInput } from "./trials.schemas";
+
+export const listPublished: RequestHandler = async (request, response, next) => { try { response.status(200).json({ success: true, data: await listPublishedTrials(request.query as unknown as TrialListQuery) }); } catch (error) { next(error); } };
+export const getPublished: RequestHandler = async (request, response, next) => { try { response.status(200).json({ success: true, data: await getPublishedTrial(request.params.trialId as string) }); } catch (error) { next(error); } };
+export const createInterest: RequestHandler = async (request, response, next) => { try { response.status(201).json({ success: true, data: await createTrialInterest(request.user?.userId as string, request.params.trialId as string, request.body as CreateInterestInput) }); } catch (error) { next(error); } };
+export const listInterests: RequestHandler = async (request, response, next) => { try { response.status(200).json({ success: true, data: await listPatientInterests(request.user?.userId as string) }); } catch (error) { next(error); } };
+export const listAdmin: RequestHandler = async (request, response, next) => { try { response.status(200).json({ success: true, data: await listAdminTrials(request.query as unknown as TrialListQuery) }); } catch (error) { next(error); } };
+export const getAdmin: RequestHandler = async (request, response, next) => { try { response.status(200).json({ success: true, data: await getAdminTrial(request.params.trialId as string) }); } catch (error) { next(error); } };
+export const create: RequestHandler = async (request, response, next) => { try { response.status(201).json({ success: true, data: await createAdminTrial(request.user?.userId as string, request.body as CreateTrialInput) }); } catch (error) { next(error); } };
+export const update: RequestHandler = async (request, response, next) => { try { response.status(200).json({ success: true, data: await updateAdminTrial(request.user?.userId as string, request.params.trialId as string, request.body as UpdateTrialInput) }); } catch (error) { next(error); } };
+export const publish: RequestHandler = async (request, response, next) => { try { response.status(200).json({ success: true, data: await publishAdminTrial(request.user?.userId as string, request.params.trialId as string, request.body.isPublished) }); } catch (error) { next(error); } };
+export const listAdminInterest: RequestHandler = async (request, response, next) => { try { response.status(200).json({ success: true, data: await listAdminInterests(request.query as any) }); } catch (error) { next(error); } };
+export const updateInterest: RequestHandler = async (request, response, next) => { try { response.status(200).json({ success: true, data: await updateInterestStatus(request.user?.userId as string, request.params.interestId as string, request.body as UpdateInterestStatusInput) }); } catch (error) { next(error); } };

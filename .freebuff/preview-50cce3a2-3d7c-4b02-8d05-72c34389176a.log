@@ -1,0 +1,16 @@
+
+> frontend@0.0.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v8.3.0[39m  [2mready in [0m[1m877[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m5:36:21 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DoctorReferralPage.tsx, /src/pages/PharmacyPage.tsx, /src/pages/PatientLabsPage.tsx[22m
+[2m5:39:54 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/PharmacyPage.tsx[22m
+[2m5:42:09 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/PharmacyPage.tsx[22m
+[2m5:43:20 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/PharmacyPage.tsx[22m
+[2m8:05:39 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/AdminLabsPage.tsx, /src/pages/PatientLabsPage.tsx[22m
+[2m8:06:03 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/AdminLabsPage.tsx[22m
+[2m8:06:54 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/AdminLabsPage.tsx[22m
