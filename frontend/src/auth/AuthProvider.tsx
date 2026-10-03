@@ -1,6 +1,10 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 
-import { AUTHENTICATION_INVALIDATED_EVENT } from "../api/client";
+import {
+  ApiError,
+  AUTHENTICATION_INVALIDATED_EVENT,
+  revokeSessionOnLogout
+} from "../api/client";
 import { getPatientProfile } from "./auth-api";
 import {
   clearAuthSession,
@@ -30,7 +34,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
           setSession((current) => current ? { ...current, user: profile.user, onboardingRequired: !profile.onboardingCompleted } : current);
         }
       } catch (error) {
-        if (!cancelled && error instanceof Error && "status" in error && (error as { status?: unknown }).status === 401) {
+        // Only a definitive 401 from the backend invalidates the stored
+        // session. Network failures or timeouts keep the session and are
+        // retried on the next load rather than logging the user out.
+        if (!cancelled && error instanceof ApiError && error.status === 401) {
           clearAuthSession();
           setSession(null);
         }
@@ -59,6 +66,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   function signOut(): void {
+    // Revoke the refresh session server-side so the stored refresh token can
+    // never mint another session. The token must be read before local
+    // storage is cleared. Local cleanup always completes even if the network
+    // call fails; the short access-token TTL bounds any residual exposure.
+    revokeSessionOnLogout();
     clearAuthSession();
     setSession(null);
   }

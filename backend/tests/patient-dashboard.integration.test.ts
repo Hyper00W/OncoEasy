@@ -3,6 +3,7 @@ import type { AddressInfo, Server } from "node:net";
 import { after, before, test } from "node:test";
 import { UserRole } from "@prisma/client";
 import dotenv from "dotenv";
+import type { PatientDashboard } from "../src/modules/patient/patient-dashboard.service";
 
 dotenv.config({ override: true });
 process.env.NODE_ENV = "test";
@@ -55,8 +56,136 @@ test("authenticated patient can access an empty dashboard", async () => {
   assert.equal(response.body.data.referral, null);
   assert.deepEqual(response.body.data.labTests, []);
   assert.equal(response.body.data.papStatus, null);
-  assert.equal(response.body.data.quickLinks.length, 6);
-  assert.equal(response.body.data.quickLinks.every((link) => link.available === false), true);
+  // All Phase 1 quick-link destinations are implemented; each must map to a
+  // frontend-routable path and be offered as available.
+  assert.equal(response.body.data.quickLinks.length, 9);
+  assert.equal(response.body.data.quickLinks.every((link) => link.available === true), true);
+  for (const link of response.body.data.quickLinks) {
+    assert.match(link.path, /^\/patient\//);
+  }
+});
+
+test("dashboard aggregates real patient data from implemented modules", async () => {
+  const patient = await createPatient("aggregate", true);
+  const { prisma } = await import("../src/database/prisma");
+
+  const doctor = await prisma.user.create({
+    data: {
+      fullName: "Step 16 Aggregate Doctor",
+      email: `step16-test-aggregate-doctor-${Date.now()}@example.com`,
+      phone: `+1555310${String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0")}`,
+      role: UserRole.DOCTOR,
+      isVerified: true
+    }
+  });
+  const availability = await prisma.doctorAvailability.create({
+    data: {
+      doctorId: doctor.id,
+      startsAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      endsAt: new Date(Date.now() + 25 * 60 * 60 * 1000)
+    }
+  });
+  const appointment = await prisma.appointment.create({
+    data: {
+      doctorId: doctor.id,
+      patientId: patient.id,
+      availabilityId: availability.id,
+      consultationType: "PHONE",
+      scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      endsAt: new Date(Date.now() + 25 * 60 * 60 * 1000),
+      status: "CONFIRMED"
+    }
+  });
+  const product = await prisma.product.create({
+    data: {
+      sku: `step16-dashboard-${Date.now()}`,
+      name: "Dashboard regression test product",
+      category: { create: { name: "Dashboard test category", slug: `dashboard-test-${Date.now()}`, isActive: true } },
+      unitLabel: "tablet",
+      price: 10,
+      currency: "USD",
+      isActive: true
+    }
+  });
+  const cart = await prisma.cart.create({
+    data: {
+      patientId: patient.id,
+      status: "CONVERTED",
+      currency: "USD",
+      items: { create: { productId: product.id, quantity: 2, unitPriceSnapshot: product.price, productNameSnapshot: product.name } }
+    }
+  });
+  await prisma.order.create({
+    data: {
+      patientId: patient.id,
+      cartId: cart.id,
+      originType: "DIRECT_CART",
+      status: "PENDING_PAYMENT",
+      currency: "USD",
+      subtotal: 20,
+      totalAmount: 20,
+      items: { create: { productId: product.id, quantity: 2, unitPriceSnapshot: product.price, productNameSnapshot: product.name } }
+    }
+  });
+  const labTest = await prisma.labTest.create({
+    data: {
+      name: "Dashboard regression test panel",
+      category: "blood",
+      price: 50,
+      currency: "USD"
+    }
+  });
+  await prisma.labBooking.create({
+    data: {
+      patientId: patient.id,
+      labTestId: labTest.id,
+      collectionType: "HOME",
+      preferredDate: new Date(Date.now() + 48 * 60 * 60 * 1000),
+      status: "PENDING_OPS"
+    }
+  });
+  const program = await prisma.pAPProgram.create({
+    data: {
+      name: "Dashboard regression test program",
+      description: "Test program",
+      eligibilityDescription: "Test eligibility",
+      requiredDocuments: ["ID proof"],
+      isActive: true
+    }
+  });
+  await prisma.pAPApplication.create({
+    data: {
+      patientId: patient.id,
+      papProgramId: program.id,
+      status: "UNDER_REVIEW",
+      applicationData: { fullName: "Step 16 Aggregate" }
+    }
+  });
+
+  const response = await getDashboard(await tokenFor(patient.id));
+  assert.equal(response.status, 200);
+
+  const dashboard = response.body.data as PatientDashboard;
+  assert.equal(dashboard.upcomingAppointment?.appointmentId, appointment.id);
+  assert.equal(dashboard.upcomingAppointment?.doctorName, doctor.fullName);
+  assert.equal(dashboard.activeOrders.length, 1);
+  assert.equal(dashboard.activeOrders[0]?.status, "PENDING_PAYMENT");
+  assert.equal(dashboard.activeOrders[0]?.itemCount, 1); // one line item (quantity 2)
+  assert.equal(dashboard.labTests.length, 1);
+  assert.equal(dashboard.labTests[0]?.name, labTest.name);
+  assert.equal(dashboard.papStatus?.programName, program.name);
+  assert.equal(dashboard.referral, null);
+
+  await prisma.pAPApplication.deleteMany({ where: { patientId: patient.id } });
+  await prisma.pAPProgram.delete({ where: { id: program.id } });
+  await prisma.labBooking.deleteMany({ where: { patientId: patient.id } });
+  await prisma.labTest.delete({ where: { id: labTest.id } });
+  await prisma.order.deleteMany({ where: { patientId: patient.id } });
+  await prisma.cart.delete({ where: { id: cart.id } });
+  await prisma.product.delete({ where: { id: product.id } });
+  await prisma.appointment.delete({ where: { id: appointment.id } });
+  await prisma.doctorAvailability.delete({ where: { id: availability.id } });
+  await prisma.user.delete({ where: { id: doctor.id } });
 });
 
 test("unauthenticated dashboard access is rejected", async () => {
@@ -143,15 +272,7 @@ async function getDashboard(token?: string): Promise<{
 
 type ApiResponse = {
   success: boolean;
-  data: {
-    nextStep: { type: string; label: string } | null;
-    upcomingAppointment: null;
-    activeOrders: unknown[];
-    referral: null;
-    labTests: unknown[];
-    papStatus: null;
-    quickLinks: Array<{ available: boolean }>;
-  };
+  data: PatientDashboard;
   error: {
     code: string;
     message: string;

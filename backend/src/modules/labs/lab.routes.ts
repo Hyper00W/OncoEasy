@@ -39,7 +39,7 @@ labRouter.get("/bookings/:bookingId/report", authenticate, requireRole(UserRole.
 labRouter.get("/bookings/:bookingId", authenticate, requireRole(UserRole.PATIENT), validateRequest({ params: labBookingParamsSchema }), getBooking);
 
 const admin = Router();
-admin.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+admin.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 admin.get("/bookings", validateRequest({ query: adminLabListQuerySchema }), listAdmin);
 admin.get("/dsa-queue", listDsaQueue);
 admin.get("/bookings/:bookingId/dsa", validateRequest({ params: labBookingParamsSchema }), getDsaBooking);

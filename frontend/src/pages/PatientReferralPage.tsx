@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
+import { PatientPageShell } from "../shell/PatientPageShell";
+import { Alert, BackLink, Button, Field, Input, LoadingState, PageIntro, Panel } from "../components/ui";
 import { addPatientReferralToCart, getPatientReferral, referralTokenStorageKey, type Referral } from "../referrals/referral-api";
 
 type Navigate = (path: string) => void;
@@ -42,7 +43,7 @@ export function PatientReferralPage({ navigate }: { navigate: Navigate }) {
 
   function addToCart(): void {
     const accessToken = token.trim();
-    if (!accessToken) return;
+    if (!accessToken || adding) return; // one referral-to-cart conversion at a time
     setAdding(true);
     setError(null);
     addPatientReferralToCart(accessToken)
@@ -59,18 +60,21 @@ export function PatientReferralPage({ navigate }: { navigate: Navigate }) {
     signOut();
     navigate("/");
   }
+  void leave;
 
   if (!user) return null;
   return (
-    <main className="workspace-page referral-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Patient referral</p>
-          <h1>Referred medicines</h1>
-          <p className="intro">Open a secure medicine referral and add it to your existing pharmacy cart.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
+    <PatientPageShell navigate={navigate} activePath="/patient/pharmacy" className="referral-page"
+      backSlot={<BackLink navigate={navigate} fallback="/patient" label="Back to dashboard" />}>
+      <PageIntro
+        eyebrow="Patient referral"
+        title="Referred medicines"
+        description="Open a secure medicine referral and add it to your existing pharmacy cart."
+        crumbs={[
+          { label: "Dashboard", href: "/patient" },
+          { label: "Referred medicines" }
+        ]}
+      />
       <Panel>
         <form className="referral-access-form" onSubmit={(event) => { event.preventDefault(); loadReferral(); }}>
           <Field label="Secure referral token" htmlFor="patient-referral-token" hint="Use the token shared by your doctor. It is not a patient or referral database ID.">
@@ -82,7 +86,7 @@ export function PatientReferralPage({ navigate }: { navigate: Navigate }) {
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <div className="success-message" role="status">{notice}</div> : null}
       {referral ? <section className="referral-detail-grid"><Panel><div className="detail-header"><div><p className="eyebrow">Referral {referral.referralId.slice(0, 8)}</p><h2>{referral.doctor?.fullName ? `From ${referral.doctor.fullName}` : "Doctor referral"}</h2></div><span className="status">{referral.status}</span></div><div className="stack-list">{referral.items.map((item) => <div className="list-row" key={`${item.sku}-${item.quantity}`}><div><strong>{item.name}</strong><span className="muted">{item.sku}{item.unitLabel ? ` • ${item.unitLabel}` : ""}</span></div><strong>Quantity {item.quantity}</strong></div>)}</div>{referral.status === "SENT" || referral.status === "VIEWED" ? <Button type="button" disabled={adding} onClick={addToCart}>{adding ? <LoadingState label="Adding to cart..." /> : "Add referral medicines to cart"}</Button> : <p className="muted">This referral has already been ordered and cannot be added again.</p>}</Panel><Panel><h2>Next step</h2><p className="muted">Referred medicines use your existing pharmacy cart, pricing, delivery validation, and checkout flow.</p>{notice ? <Button type="button" onClick={() => navigate("/patient/pharmacy?tab=cart")}>Open pharmacy cart</Button> : null}<p className="field-hint">Referral status: {referral.status}</p></Panel></section> : null}
-    </main>
+    </PatientPageShell>
   );
 }
 

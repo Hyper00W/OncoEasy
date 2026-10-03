@@ -13,7 +13,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
-    "db:verify-schema": "node scripts/verify-migrations.js"
+    "db:verify-schema": "node scripts/verify-migrations.js",
+    "seed:demand-demo": "tsx scripts/seed-demand-demo.ts",
+    "smoke:production": "node scripts/smoke-production.mjs",
+    "verify:build": "node scripts/verify-production-build.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

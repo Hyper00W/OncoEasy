@@ -36,6 +36,15 @@ export function verifyRefreshToken(token: string): TokenPayload {
   return verifyToken(token, env.JWT_REFRESH_SECRET);
 }
 
+/**
+ * Detects the opaque rotating refresh tokens issued since Phase 4.6 (see
+ * refresh-session.service.ts). These are validated by SHA-256 hash lookup in
+ * the refresh_sessions table and must NOT be treated as JWTs.
+ */
+export function isOpaqueRefreshToken(token: string): boolean {
+  return /^[A-Za-z0-9_-]{43,128}$/.test(token);
+}
+
 function verifyToken(token: string, secret: string): TokenPayload {
   try {
     const decoded = jwt.verify(token, secret);

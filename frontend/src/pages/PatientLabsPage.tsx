@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
+import { PatientPageShell } from "../shell/PatientPageShell";
+import { Alert, BackLink, Button, EmptyState, Field, Input, ListCard, LoadingState, PageHero, Panel } from "../components/ui";
+import { DocumentIcon, FlaskIcon, HomeIcon } from "../components/icons";
+import { StatusChip } from "../components/StatusChip";
 import { listPrescriptions, type Prescription } from "../pharmacy/pharmacy-api";
 import {
   createLabBooking,
@@ -35,20 +38,32 @@ export function PatientLabsPage({ navigate }: { navigate: Navigate }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     Promise.all([listLabTests({ page: 1, pageSize: 100 }), listPatientBookings(), listPrescriptions()])
       .then(([testResponse, bookingResponse, prescriptionResponse]) => {
+        if (cancelled) return;
         setTests(testResponse.items);
         setBookings(bookingResponse);
         setPrescriptions(prescriptionResponse.items.filter((item) => item.status === "VERIFIED"));
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
+      .catch((requestError: unknown) => {
+        if (!cancelled) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function leave(): void {
     signOut();
     navigate("/");
   }
+  void leave;
 
   function refresh(): void {
     Promise.all([listLabTests({ page: 1, pageSize: 100 }), listPatientBookings()])
@@ -84,6 +99,8 @@ export function PatientLabsPage({ navigate }: { navigate: Navigate }) {
       setError("A verified prescription is required for this test.");
       return;
     }
+
+    if (submitting) return;
 
     setSubmitting(true);
     setError(null);
@@ -129,15 +146,30 @@ export function PatientLabsPage({ navigate }: { navigate: Navigate }) {
   if (!user) return null;
 
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Patient care</p>
-          <h1>Lab tests</h1>
-          <p className="intro">Book bloodwork and sample collection from the active lab catalog.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
+    <PatientPageShell
+      navigate={navigate}
+      activePath="/patient/labs"
+      className="labs-page"
+      backSlot={<BackLink navigate={navigate} fallback="/patient" label="Back to dashboard" />}
+    >
+      <PageHero
+        tone="teal"
+        eyebrow="Pathology &amp; Diagnostics Network"
+        title="Diagnostic lab tests,"
+        highlight="accurate &amp; verified."
+        description="Schedule bloodwork, molecular markers, and cancer diagnostics from our certified laboratory network. Sample collection at your home or at a partner center."
+        image="/assets/banner/specialty-medicines.jpg"
+        imageAlt="Diagnostic laboratory samples"
+        badge={
+          <>
+            <FlaskIcon size={16} /> Certified Diagnostics
+          </>
+        }
+        crumbs={[
+          { label: "Dashboard", href: "/patient" },
+          { label: "Lab tests" }
+        ]}
+      />
 
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <div className="success-message" role="status">{notice}</div> : null}
@@ -146,38 +178,51 @@ export function PatientLabsPage({ navigate }: { navigate: Navigate }) {
         <LoadingState label="Loading lab catalog..." />
       ) : (
         <section className="consultation-grid">
-          <Panel>
+          <Panel className="panel-fluid">
             <h2>Available tests</h2>
             {tests.length === 0 ? (
-              <p className="empty-state">No active lab tests are available right now.</p>
+              <EmptyState
+                icon={<FlaskIcon size={22} />}
+                title="No lab tests are available right now"
+                hint="The lab catalog is being prepared. Check back soon."
+              />
             ) : (
-              <div className="stack-list">
+              <div className="lab-test-list">
                 {tests.map((test) => (
-                  <div className="list-row" key={test.testId}>
-                    <div>
-                      <strong>{test.name}</strong>
-                      <span className="muted">{test.category} • {test.currency} {test.price}</span>
-                    </div>
-                    <Button type="button" onClick={() => openBookingForm(test)}>Book</Button>
-                  </div>
+                  <ListCard
+                    key={test.testId}
+                    icon={<FlaskIcon size={18} />}
+                    tone="blue"
+                    title={test.name}
+                    meta={`${test.category} • ${test.currency} ${test.price}${test.homeCollectionAvailable ? " • Home collection" : ""}`}
+                    action={
+                      <Button type="button" onClick={() => openBookingForm(test)}>Book test</Button>
+                    }
+                  >
+                    {test.description ? <span>{test.description}</span> : null}
+                  </ListCard>
                 ))}
               </div>
             )}
           </Panel>
 
-          <Panel>
+          <Panel className="panel-fluid">
             <h2>My bookings</h2>
             {bookings.length === 0 ? (
-              <p className="empty-state">No lab bookings yet.</p>
+              <EmptyState
+                icon={<DocumentIcon size={22} />}
+                title="No lab bookings yet"
+                hint="Book a test from the catalog and track collection and reports here."
+              />
             ) : (
               <div className="stack-list">
                 {bookings.map((booking) => (
                   <button className="list-row list-row-button" type="button" key={booking.bookingId} onClick={() => openDetails(booking.bookingId)}>
                     <div>
                       <strong>{booking.test.name}</strong>
-                      <span className="muted">{formatDate(booking.preferredDate)} • {booking.status}</span>
+                      <span className="muted">{formatDate(booking.preferredDate)} • {booking.collectionType === "HOME" ? "Home sample" : "Center visit"}</span>
                     </div>
-                    <span className="status">{booking.status}</span>
+                    <StatusChip status={booking.status} />
                   </button>
                 ))}
               </div>
@@ -193,15 +238,50 @@ export function PatientLabsPage({ navigate }: { navigate: Navigate }) {
                 {selectedTest.preparationInstructions ? <p className="muted">Preparation: {selectedTest.preparationInstructions}</p> : null}
                 <form className="form-stack" onSubmit={submit}>
                   <Field label="Collection type" htmlFor="lab-collection-type">
-                    <select
-                      className="input"
-                      id="lab-collection-type"
-                      value={collectionType}
-                      onChange={(event) => setCollectionType(event.target.value as "HOME" | "CENTER")}
-                    >
-                      {selectedTest.homeCollectionAvailable ? <option value="HOME">Home collection</option> : null}
-                      {selectedTest.centerCollectionAvailable ? <option value="CENTER">Center visit</option> : null}
-                    </select>
+                    <div className="collection-mode-grid" role="radiogroup" aria-label="Collection type">
+                      {selectedTest.homeCollectionAvailable ? (
+                        <div
+                          tabIndex={0}
+                          role="radio"
+                          aria-checked={collectionType === "HOME"}
+                          className={`mode-card${collectionType === "HOME" ? " is-active" : ""}`}
+                          onClick={() => setCollectionType("HOME")}
+                          onKeyDown={(event) => {
+                            if (event.key === " " || event.key === "Enter") {
+                              event.preventDefault();
+                              setCollectionType("HOME");
+                            }
+                          }}
+                        >
+                          <HomeIcon size={20} />
+                          <div>
+                            <strong>Home collection</strong>
+                            <p className="field-hint" style={{ margin: 0 }}>Sample collected at your home</p>
+                          </div>
+                        </div>
+                      ) : null}
+                      {selectedTest.centerCollectionAvailable ? (
+                        <div
+                          tabIndex={0}
+                          role="radio"
+                          aria-checked={collectionType === "CENTER"}
+                          className={`mode-card${collectionType === "CENTER" ? " is-active" : ""}`}
+                          onClick={() => setCollectionType("CENTER")}
+                          onKeyDown={(event) => {
+                            if (event.key === " " || event.key === "Enter") {
+                              event.preventDefault();
+                              setCollectionType("CENTER");
+                            }
+                          }}
+                        >
+                          <FlaskIcon size={20} />
+                          <div>
+                            <strong>Center visit</strong>
+                            <p className="field-hint" style={{ margin: 0 }}>Visit a partner collection center</p>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </Field>
 
                   <Field label="Preferred sample date" htmlFor="lab-date">
@@ -244,7 +324,9 @@ export function PatientLabsPage({ navigate }: { navigate: Navigate }) {
                 <h2>Booking details</h2>
                 <p><strong>{selectedBooking.test.name}</strong></p>
                 <p className="muted">{selectedBooking.test.category} • {selectedBooking.test.currency} {selectedBooking.test.price}</p>
-                <p className="muted">Collection: {selectedBooking.collectionType} • {selectedBooking.status}</p>
+                <p className="muted">
+                  Collection: {selectedBooking.collectionType === "HOME" ? "Home sample pickup" : "Center visit"} • <StatusChip status={selectedBooking.status} />
+                </p>
                 <p className="muted">Preferred date: {formatDate(selectedBooking.preferredDate)}{selectedBooking.preferredTimeSlot ? ` • ${selectedBooking.preferredTimeSlot}` : ""}</p>
                 {selectedBooking.patientNotes ? <p className="muted">Notes: {selectedBooking.patientNotes}</p> : null}
                 {selectedBooking.externalOrderId ? <p className="muted">External order ID: {selectedBooking.externalOrderId}</p> : null}
@@ -268,7 +350,7 @@ export function PatientLabsPage({ navigate }: { navigate: Navigate }) {
           ) : null}
         </section>
       )}
-    </main>
+    </PatientPageShell>
   );
 }
 

@@ -1,0 +1,1003 @@
+/* ==========================================================================
+   OncoEasy motion language (Phase 7)
+   --------------------------------------------------------------------------
+   One deliberate, reusable motion system for the whole product. Loaded after
+   index.css, so it upgrades the earlier 160–420ms layer into a composed
+   language: page entrance, scroll reveal, hero ambience, card/button
+   feedback, navigation, dashboard metrics, journey line draw, skeletons,
+   forms, drawers and pharmacy interactions.
+
+   Rules of the system:
+   - only transform / opacity / filter are animated (no layout thrash)
+   - nothing animates "everything at once"; delays are always intentional
+   - every pattern is neutralised under prefers-reduced-motion
+   ========================================================================== */
+
+:root {
+  --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-soft: cubic-bezier(0.33, 0.08, 0.18, 1);
+  --motion-ease-spring: cubic-bezier(0.34, 1.42, 0.44, 1);
+  --motion-fast: 170ms;
+  --motion-base: 320ms;
+  --motion-slow: 560ms;
+  --motion-reveal: 720ms;
+  --reveal-shift: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   A. Page entrance — one fade + rise for the whole content region
+   -------------------------------------------------------------------------- */
+
+@keyframes oe-page-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* The shell bodies are re-created on every route change, so the entrance
+   replays per page without a router-level animation library. */
+.site-main,
+.patient-shell-body,
+.portal-main,
+.admin-main,
+.auth-page,
+.workspace-page {
+  animation: oe-page-enter var(--motion-slow) var(--motion-ease-out) both;
+}
+
+/* Secondary page regions settle slightly later than the primary content so
+   the page reads top-down instead of snapping in as one flat block. */
+.patient-shell-body > *:nth-child(2),
+.portal-main > *:nth-child(2),
+.admin-main > *:nth-child(2) {
+  animation: oe-page-enter var(--motion-slow) var(--motion-ease-out) 60ms both;
+}
+
+/* --------------------------------------------------------------------------
+   B. Scroll reveal primitives (driven by <Reveal /> + IntersectionObserver)
+   -------------------------------------------------------------------------- */
+
+.reveal {
+  opacity: 0;
+  transition:
+    opacity var(--motion-reveal) var(--motion-ease-out),
+    transform var(--motion-reveal) var(--motion-ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.reveal-up {
+  transform: translate3d(0, var(--reveal-shift), 0);
+}
+
+.reveal-down {
+  transform: translate3d(0, calc(var(--reveal-shift) * -1), 0);
+}
+
+.reveal-left {
+  transform: translate3d(calc(var(--reveal-shift) * -1), 0, 0);
+}
+
+.reveal-right {
+  transform: translate3d(var(--reveal-shift), 0, 0);
+}
+
+.reveal-scale {
+  transform: scale(0.972);
+}
+
+.reveal-fade {
+  transform: none;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  will-change: auto;
+}
+
+/* --------------------------------------------------------------------------
+   C. Hero motion — ambient drift, staggered copy, CTA response
+   -------------------------------------------------------------------------- */
+
+@keyframes oe-ambient-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) scale(1.015);
+  }
+}
+
+@keyframes oe-ambient-drift-slow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(10px, -10px, 0);
+  }
+}
+
+@keyframes oe-hero-copy-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes oe-hero-media-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.hero-section .hero-copy > *,
+.hero-section .hero-eyebrow,
+.hero-section .hero-actions,
+.page-hero-copy > * {
+  animation: oe-hero-copy-in 620ms var(--motion-ease-out) both;
+}
+
+.hero-section .hero-copy > *:nth-child(1) { animation-delay: 40ms; }
+.hero-section .hero-copy > *:nth-child(2) { animation-delay: 110ms; }
+.hero-section .hero-copy > *:nth-child(3) { animation-delay: 170ms; }
+.hero-section .hero-copy > *:nth-child(4) { animation-delay: 230ms; }
+.hero-section .hero-copy > *:nth-child(5) { animation-delay: 280ms; }
+
+.page-hero-copy > *:nth-child(1) { animation-delay: 30ms; }
+.page-hero-copy > *:nth-child(2) { animation-delay: 90ms; }
+.page-hero-copy > *:nth-child(3) { animation-delay: 150ms; }
+.page-hero-copy > *:nth-child(4) { animation-delay: 210ms; }
+
+.hero-section .hero-image-frame,
+.hero-section .hero-visual,
+.page-hero-visual {
+  animation: oe-hero-media-in 760ms var(--motion-ease-out) 120ms both;
+}
+
+/* Search entrance sits just behind the copy so it feels like the natural next
+   step rather than a competing element. */
+.hero-section .medicine-search,
+.hero-section .hero-search {
+  animation: oe-hero-copy-in 640ms var(--motion-ease-out) 320ms both;
+}
+
+/* Ambient decorative layer inside heroes (pure CSS, no extra DOM). */
+.hero-section::after,
+.page-hero::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: auto -6% -34% auto;
+  width: 46%;
+  min-width: 260px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(0, 169, 157, 0.14), transparent 68%);
+  filter: blur(6px);
+  pointer-events: none;
+  animation: oe-ambient-drift 14s var(--motion-ease-soft) infinite;
+}
+
+.hero-section::before,
+.page-hero::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: auto auto -22% -8%;
+  width: 30%;
+  min-width: 180px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(246, 181, 47, 0.12), transparent 70%);
+  pointer-events: none;
+  animation: oe-ambient-drift-slow 19s var(--motion-ease-soft) infinite;
+}
+
+.hero-section,
+.page-hero {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-section > .container,
+.page-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* --------------------------------------------------------------------------
+   D. Cards — composed hover lift with media zoom and edge transition
+   -------------------------------------------------------------------------- */
+
+.compose-card,
+.service-card,
+.stat-card,
+.product-card,
+.category-card,
+.shortcut-card,
+.duo-card,
+.trust-card,
+.why-onco-card,
+.site-testimonial-card,
+.story-card,
+.article-card,
+.trial-card,
+.doctor-preview,
+.overview-card,
+.metric-card {
+  transition:
+    transform 360ms var(--motion-ease-out),
+    box-shadow 360ms var(--motion-ease-out),
+    border-color 360ms var(--motion-ease-out),
+    background-color 360ms var(--motion-ease-out);
+}
+
+.compose-card:hover,
+.service-card:hover,
+.stat-card:hover,
+.product-card:hover,
+.category-card:hover,
+.shortcut-card:hover,
+.duo-card:hover,
+.trust-card:hover,
+.why-onco-card:hover,
+.site-testimonial-card:hover,
+.story-card:hover,
+.article-card:hover,
+.trial-card:hover,
+.doctor-preview:hover {
+  transform: translate3d(0, -5px, 0);
+}
+
+.metric-card:hover,
+.overview-card:hover {
+  transform: translate3d(0, -3px, 0);
+}
+
+/* Media inside cards zooms subtly on hover — never the whole card artwork. */
+.compose-card-media img,
+.product-card-media img,
+.article-card-media img,
+.story-card-media img,
+.category-card-img img,
+.duo-card-media img,
+.service-card-media img {
+  transition: transform 700ms var(--motion-ease-out), opacity 420ms var(--motion-ease-out);
+}
+
+.compose-card:hover .compose-card-media img,
+.article-card:hover .article-card-media img,
+.story-card:hover .story-card-media img,
+.category-card:hover .category-card-img img,
+.duo-card:hover .duo-card-media img,
+.service-card:hover .service-card-media img {
+  transform: scale(1.045);
+}
+
+/* Reveal elements that ARE hover-lift cards (public homepage cards rendered
+   as `Reveal as=…className="…card"`): .reveal.is-visible would otherwise pin
+   their transform and eat the index.css hover lift (this file loads later).
+   These rules restore the lift and give hovers their snappy 360ms timing
+   while the reveal itself keeps its 720ms opacity entrance. */
+.reveal.category-card,
+.reveal.why-onco-card,
+.reveal.doctor-preview {
+  transition:
+    opacity var(--motion-reveal) var(--motion-ease-out),
+    transform 360ms var(--motion-ease-out),
+    box-shadow 360ms var(--motion-ease-out),
+    border-color 360ms var(--motion-ease-out),
+    background-color 360ms var(--motion-ease-out);
+}
+
+.reveal.category-card.is-visible:hover,
+.reveal.why-onco-card.is-visible:hover,
+.reveal.doctor-preview.is-visible:hover {
+  transform: translate3d(0, -5px, 0);
+}
+
+/* Grid cells whose card is wrapped in a reveal div (product grid, testimonial
+   rail): stretch the wrapper and the card so equal-height rows and snap
+   columns stay intact. */
+.product-grid > .reveal,
+.testimonial-rail > .reveal {
+  display: flex;
+}
+
+.product-grid > .reveal > .product-card,
+.testimonial-rail > .reveal > .site-testimonial-card {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   E. Buttons — hover, press, icon travel, success confirmation
+   -------------------------------------------------------------------------- */
+
+.button,
+.button-secondary,
+.button-light,
+.button-outline-light,
+.link-button {
+  transition:
+    background-color var(--motion-fast) var(--motion-ease-out),
+    border-color var(--motion-fast) var(--motion-ease-out),
+    color var(--motion-fast) var(--motion-ease-out),
+    box-shadow var(--motion-fast) var(--motion-ease-out),
+    transform 140ms var(--motion-ease-out);
+}
+
+.button:hover:not(:disabled) {
+  transform: translate3d(0, -1px, 0);
+}
+
+.button:active:not(:disabled),
+.button-secondary:active:not(:disabled),
+.button-light:active:not(:disabled),
+.link-button:active:not(:disabled) {
+  transform: translate3d(0, 0, 0) scale(0.975);
+}
+
+/* Trailing icons slide on hover; leading icons step back. */
+.button svg,
+.primary-button svg,
+.button-light svg {
+  transition: transform var(--motion-fast) var(--motion-ease-out);
+}
+
+.button:hover:not(:disabled) svg:last-child {
+  transform: translateX(3px);
+}
+
+.button:hover:not(:disabled) svg:first-child:not(:last-child) {
+  transform: translateX(-3px);
+}
+
+@keyframes oe-success-pop {
+  0% { transform: scale(0.86); opacity: 0; }
+  55% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.success-message,
+.cart-added-note {
+  animation: oe-success-pop 360ms var(--motion-ease-spring) both;
+}
+
+/* --------------------------------------------------------------------------
+   F. Navigation — dropdown reveal, drawer slide, backdrop fade, indicator
+   -------------------------------------------------------------------------- */
+
+.nav-menu,
+.patient-account-menu,
+.search-popover,
+.portal-account-menu {
+  animation: oe-menu-reveal 220ms var(--motion-ease-out) both;
+  transform-origin: top left;
+}
+
+@keyframes oe-menu-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Active nav indicator: the ONE hover/active line under site nav items.
+   Grows from the centre; the link's transparent 3px bottom border (index.css)
+   only reserves layout space and never gets a colour. Amber tint is applied
+   by workspaces.css for the dark navbar — still a single indicator. */
+.site-nav-link {
+  position: relative;
+}
+
+.site-nav-link::after {
+  content: "";
+  position: absolute;
+  /* Inset accounts for the link's own 4px horizontal padding so the pill
+     keeps its original width relative to the label text. */
+  left: 18px;
+  right: 18px;
+  bottom: 2px;
+  height: 3px;
+  border-radius: 3px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: center;
+  opacity: 0.9;
+  transition: transform 200ms var(--motion-ease-out);
+}
+
+.site-nav-link.is-active::after,
+.site-nav-link:hover::after,
+.site-nav-link[aria-expanded="true"]::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-nav-link::after {
+    transition: none;
+  }
+}
+
+@keyframes oe-drawer-in {
+  from {
+    transform: translate3d(calc(var(--drawer-enter-from, -100%)), 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.drawer {
+  animation: oe-drawer-in 340ms var(--motion-ease-out) both;
+}
+
+.admin-drawer,
+.drawer.drawer-right {
+  --drawer-enter-from: 100%;
+}
+
+@keyframes oe-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.drawer-overlay {
+  animation: oe-backdrop-in 240ms var(--motion-ease-out) both;
+}
+
+/* --------------------------------------------------------------------------
+   G. Dashboard — metric entrance, next-step emphasis, progress animation
+   -------------------------------------------------------------------------- */
+
+@keyframes oe-metric-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.metric-grid > *,
+.dashboard-actions-grid > *,
+.dashboard-sections > *,
+.stat-grid > * {
+  animation: oe-metric-in 520ms var(--motion-ease-out) both;
+}
+
+.metric-grid > *:nth-child(1),
+.dashboard-actions-grid > *:nth-child(1),
+.dashboard-sections > *:nth-child(1),
+.stat-grid > *:nth-child(1) { animation-delay: 40ms; }
+
+.metric-grid > *:nth-child(2),
+.dashboard-actions-grid > *:nth-child(2),
+.dashboard-sections > *:nth-child(2),
+.stat-grid > *:nth-child(2) { animation-delay: 90ms; }
+
+.metric-grid > *:nth-child(3),
+.dashboard-actions-grid > *:nth-child(3),
+.dashboard-sections > *:nth-child(3),
+.stat-grid > *:nth-child(3) { animation-delay: 140ms; }
+
+.metric-grid > *:nth-child(4),
+.dashboard-actions-grid > *:nth-child(4),
+.dashboard-sections > *:nth-child(4),
+.stat-grid > *:nth-child(4) { animation-delay: 190ms; }
+
+.metric-grid > *:nth-child(5),
+.dashboard-actions-grid > *:nth-child(5),
+.dashboard-sections > *:nth-child(5),
+.stat-grid > *:nth-child(5) { animation-delay: 240ms; }
+
+.metric-grid > *:nth-child(n + 6),
+.dashboard-actions-grid > *:nth-child(n + 6),
+.dashboard-sections > *:nth-child(n + 6),
+.stat-grid > *:nth-child(n + 6) { animation-delay: 290ms; }
+
+/* The one dominant "next step" block breathes in slightly slower so the eye
+   lands on it first. */
+.nextstep-hero {
+  animation: oe-nextstep-in 620ms var(--motion-ease-out) 60ms both;
+}
+
+@keyframes oe-nextstep-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.994);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Progress bars/tracks fill from zero on paint. */
+@keyframes oe-progress-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.progress-fill,
+.journey-progress-fill,
+.care-progress-fill {
+  transform-origin: left center;
+  animation: oe-progress-fill 900ms var(--motion-ease-out) 200ms both;
+}
+
+/* --------------------------------------------------------------------------
+   H. Journey — animated connecting line, stage emphasis, marker reveal
+   -------------------------------------------------------------------------- */
+
+@keyframes oe-line-draw {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes oe-stage-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-14px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.care-timeline::before {
+  transform-origin: top center;
+  animation: oe-line-draw 1100ms var(--motion-ease-out) 120ms both;
+}
+
+.care-timeline-stage {
+  animation: oe-stage-in 620ms var(--motion-ease-out) both;
+}
+
+.care-timeline-stage:nth-child(1) { animation-delay: 120ms; }
+.care-timeline-stage:nth-child(2) { animation-delay: 220ms; }
+.care-timeline-stage:nth-child(3) { animation-delay: 320ms; }
+.care-timeline-stage:nth-child(4) { animation-delay: 420ms; }
+.care-timeline-stage:nth-child(n + 5) { animation-delay: 520ms; }
+
+.care-timeline-marker {
+  transition:
+    transform 320ms var(--motion-ease-out),
+    background-color 320ms var(--motion-ease-out),
+    box-shadow 320ms var(--motion-ease-out);
+}
+
+.care-timeline-stage:hover .care-timeline-marker {
+  transform: scale(1.08);
+}
+
+/* Current stage gets a slow, calm pulse — attention without alarm. */
+@keyframes oe-current-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 169, 157, 0.34); }
+  50% { box-shadow: 0 0 0 9px rgba(0, 169, 157, 0); }
+}
+
+.care-timeline-stage.is-current .care-timeline-marker,
+.journey-stage-row.is-current .journey-stage-marker {
+  animation: oe-current-pulse 2600ms var(--motion-ease-soft) infinite;
+}
+
+/* --------------------------------------------------------------------------
+   I. Loading — premium skeletons with a soft travelling sheen
+   -------------------------------------------------------------------------- */
+
+@keyframes oe-shimmer {
+  from { transform: translate3d(-120%, 0, 0); }
+  to { transform: translate3d(120%, 0, 0); }
+}
+
+.skeleton,
+.skeleton-line,
+.skeleton-card,
+.skeleton-hero,
+.skeleton-action,
+.skeleton-row,
+.skeleton-text,
+.skeleton-queue-card {
+  position: relative;
+  overflow: hidden;
+  /* The travelling sheen replaces the older background-position shimmer, so
+     the old animation is switched off rather than left running unused. */
+  animation: none;
+  background: linear-gradient(180deg, rgba(226, 232, 238, 0.55), rgba(226, 232, 238, 0.32));
+}
+
+.skeleton::after,
+.skeleton-line::after,
+.skeleton-card::after,
+.skeleton-hero::after,
+.skeleton-action::after,
+.skeleton-row::after,
+.skeleton-text::after,
+.skeleton-queue-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.72) 50%,
+    transparent 80%
+  );
+  animation: oe-shimmer 1900ms var(--motion-ease-soft) infinite;
+}
+
+/* --------------------------------------------------------------------------
+   J. Forms — focus, validation and success transitions
+   -------------------------------------------------------------------------- */
+
+.input,
+.textarea,
+select.input {
+  transition:
+    border-color var(--motion-fast) var(--motion-ease-out),
+    box-shadow var(--motion-fast) var(--motion-ease-out),
+    background-color var(--motion-fast) var(--motion-ease-out);
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  box-shadow: 0 0 0 4px rgba(0, 169, 157, 0.14);
+}
+
+@keyframes oe-field-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-4px, 0, 0); }
+  45% { transform: translate3d(4px, 0, 0); }
+  70% { transform: translate3d(-2px, 0, 0); }
+}
+
+.field-error,
+.input-error {
+  animation: oe-field-shake 340ms var(--motion-ease-soft) both;
+}
+
+/* --------------------------------------------------------------------------
+   K. Modals & drawers — enter/exit with focus handoff
+   -------------------------------------------------------------------------- */
+
+.confirm-dialog,
+.modal-panel {
+  animation: oe-modal-in 300ms var(--motion-ease-out) both;
+}
+
+@keyframes oe-modal-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   L. Pharmacy — add-to-cart feedback, cart badge, filter/pagination motion
+   -------------------------------------------------------------------------- */
+
+@keyframes oe-badge-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.cart-count,
+.header-cart-count {
+  animation: oe-badge-pop 340ms var(--motion-ease-spring) both;
+}
+
+.product-card-media,
+.product-card-monogram {
+  transition: transform 620ms var(--motion-ease-out), background-color 420ms var(--motion-ease-out);
+}
+
+.product-card:hover .product-card-monogram {
+  transform: scale(1.05) rotate(-1.5deg);
+}
+
+.product-grid.is-loading,
+.catalog-results {
+  transition: opacity 260ms var(--motion-ease-out);
+}
+
+.category-rail-item,
+.filter-chip {
+  transition:
+    transform 240ms var(--motion-ease-out),
+    background-color 240ms var(--motion-ease-out),
+    border-color 240ms var(--motion-ease-out),
+    color 240ms var(--motion-ease-out);
+}
+
+.category-rail-item:hover,
+.filter-chip:hover {
+  transform: translate3d(0, -2px, 0);
+}
+
+/* --------------------------------------------------------------------------
+   M. Stories & testimonials — media reveal and quote entrance
+   -------------------------------------------------------------------------- */
+
+@keyframes oe-media-reveal {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.site-testimonial-media img,
+.story-card-media img,
+.featured-story-media img,
+.testimonial-media {
+  animation: oe-media-reveal 900ms var(--motion-ease-out) both;
+}
+
+@keyframes oe-quote-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.site-testimonial-quote,
+.story-quote,
+.quote-block {
+  animation: oe-quote-in 700ms var(--motion-ease-out) 120ms both;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion — keep usability, drop every movement
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-up,
+  .reveal-down,
+  .reveal-left,
+  .reveal-right,
+  .reveal-scale,
+  .reveal-fade {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .hero-section::after,
+  .hero-section::before,
+  .page-hero::after,
+  .page-hero::before,
+  .care-timeline-stage.is-current .care-timeline-marker,
+  .journey-stage-row.is-current .journey-stage-marker {
+    animation: none !important;
+  }
+
+  .skeleton::after,
+  .skeleton-line::after,
+  .skeleton-card::after,
+  .skeleton-hero::after,
+  .skeleton-action::after,
+  .skeleton-row::after,
+  .skeleton-text::after,
+  .skeleton-queue-card::after {
+    animation: none !important;
+    opacity: 0.35;
+  }
+
+  .site-main,
+  .patient-shell-body,
+  .portal-main,
+  .admin-main,
+  .auth-page,
+  .workspace-page,
+  .nextstep-hero,
+  .metric-grid > *,
+  .dashboard-actions-grid > *,
+  .dashboard-sections > *,
+  .stat-grid > *,
+  .care-timeline::before,
+  .care-timeline-stage,
+  .product-card:hover .product-card-monogram,
+  .category-rail-item:hover,
+  .filter-chip:hover {
+    animation: none !important;
+    transform: none;
+  }
+
+  .compose-card:hover,
+  .service-card:hover,
+  .stat-card:hover,
+  .product-card:hover,
+  .category-card:hover,
+  .shortcut-card:hover,
+  .duo-card:hover,
+  .trust-card:hover,
+  .why-onco-card:hover,
+  .site-testimonial-card:hover,
+  .story-card:hover,
+  .article-card:hover,
+  .trial-card:hover,
+  .doctor-preview:hover,
+  .metric-card:hover,
+  .overview-card:hover,
+  .reveal.category-card.is-visible:hover,
+  .reveal.why-onco-card.is-visible:hover,
+  .reveal.doctor-preview.is-visible:hover,
+  .button:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .button:hover:not(:disabled) svg:last-child,
+  .button:hover:not(:disabled) svg:first-child:not(:last-child),
+  .compose-card:hover .compose-card-media img,
+  .article-card:hover .article-card-media img,
+  .story-card:hover .story-card-media img,
+  .category-card:hover .category-card-img img,
+  .duo-card:hover .duo-card-media img,
+  .service-card:hover .service-card-media img {
+    transform: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   J. Interaction polish layer
+   Entrances for surfaces that mount conditionally (menus, dialogs, drawer
+   scrim, notices) plus consistent hover feedback on small controls. All
+   160–420ms, transform/opacity only, neutralised under reduced-motion.
+   -------------------------------------------------------------------------- */
+
+@keyframes oe-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes oe-pop-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.985); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* Dropdown menu ITEMS settle in a quiet top-down stagger below the existing
+   menu-in / oe-menu-reveal container entrance, capped so long menus never
+   feel slow. */
+.nav-menu > li,
+.patient-account-menu > * {
+  animation: oe-pop-in 240ms var(--motion-ease-out) both;
+}
+
+.nav-menu > li:nth-child(2),
+.patient-account-menu > *:nth-child(2) {
+  animation-delay: 30ms;
+}
+
+.nav-menu > li:nth-child(3),
+.patient-account-menu > *:nth-child(3) {
+  animation-delay: 60ms;
+}
+
+.nav-menu > li:nth-child(n + 4),
+.patient-account-menu > *:nth-child(n + 4) {
+  animation-delay: 90ms;
+}
+
+/* Small menu rows get the same hover treatment as nav-menu-item. */
+.patient-account-menu button {
+  transition: background-color 180ms var(--motion-ease-out), color 180ms var(--motion-ease-out);
+}
+
+.patient-account-menu button:hover {
+  background: var(--brand-50);
+}
+
+/* Dialogs: the confirm scrim fades while the panel rises into place. */
+.confirm-overlay {
+  animation: oe-overlay-in 200ms var(--motion-ease-out) both;
+}
+
+.confirm-dialog {
+  animation: oe-pop-in 240ms var(--motion-ease-out) both;
+}
+
+/* Drawer scrim fades; the panel keeps its existing drawer-in slide. */
+.drawer-overlay {
+  animation: oe-overlay-in 220ms var(--motion-ease-out) both;
+}
+
+/* Portal mobile nav panel settles gently under the bar. */
+.patient-topbar-mobile {
+  animation: oe-pop-in 220ms var(--motion-ease-out) both;
+}
+
+/* Tabs: smooth active-state and hover transitions (pharmacist tabs had none). */
+.pharmacy-tabs button {
+  transition: background-color 200ms var(--motion-ease-out), color 200ms var(--motion-ease-out), border-color 200ms var(--motion-ease-out);
+}
+
+.pharmacy-tabs button:hover:not(.tab-active) {
+  color: var(--brand-700);
+}
+
+/* Status chips cross-fade when a status changes. */
+.status-chip {
+  transition: background-color 180ms var(--motion-ease-out), color 180ms var(--motion-ease-out), border-color 180ms var(--motion-ease-out);
+}
+
+/* Inline notices fade in when they appear (alerts, success confirmations). */
+.alert,
+.success-message {
+  animation: oe-overlay-in 220ms var(--motion-ease-out) both;
+}
+
+/* Native checkboxes/radios/progress pick up the brand accent. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--teal-600);
+}
+
+/* Media reveal: hero and editorial imagery settles from a whisper of scale.
+   Runs once on mount; lazy images reveal the same way when they arrive. */
+@keyframes oe-media-in {
+  from { opacity: 0; transform: scale(1.015); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.page-intro-media img,
+.page-hero-frame img,
+.editorial-card-media img {
+  animation: oe-media-in 420ms var(--motion-ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-menu,
+  .patient-account-menu,
+  .nav-menu > li,
+  .patient-account-menu > *,
+  .confirm-overlay,
+  .confirm-dialog,
+  .drawer-overlay,
+  .patient-topbar-mobile,
+  .alert,
+  .success-message,
+  .page-intro-media img,
+  .page-hero-frame img,
+  .editorial-card-media img {
+    animation: none;
+  }
+}

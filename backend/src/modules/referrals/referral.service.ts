@@ -3,11 +3,12 @@ import { ReferralStatus, UserRole } from "@prisma/client";
 
 import { prisma } from "../../database/prisma";
 import { AppError } from "../../errors/app-error";
-import { addCartItem } from "../pharmacy/carts/cart.service";
+import { addCartItemInTransaction } from "../pharmacy/carts/cart.service";
 import { toDoctorReferralResponse, toPatientReferralResponse } from "./referral.mapper";
 import type { ReferralCreateInput } from "./referral.schemas";
 import type { AdminReferralListQuery } from "./referral.admin.schemas";
 import { recordAnalyticsEvent } from "../analytics/analytics.events";
+import { recordAuditEvent } from "../../observability/audit";
 
 const referralInclude = {
   doctor: { select: { id: true, fullName: true } },
@@ -51,6 +52,15 @@ export async function createDoctorReferral(doctorId: string, input: ReferralCrea
     });
     await recordAnalyticsEvent(transaction, "REFERRAL_CREATED", { userId: doctorId, entityType: "REFERRAL", entityId: created.id });
     await recordAnalyticsEvent(transaction, "DOCTOR_REFERRAL_CREATED", { userId: doctorId, entityType: "REFERRAL", entityId: created.id });
+    // Business-action audit. The referral access token is never recorded.
+    await recordAuditEvent(transaction, {
+      eventType: "REFERRAL_CREATED",
+      actorUserId: doctorId,
+      actorRole: "DOCTOR",
+      resourceType: "REFERRAL",
+      resourceId: created.id,
+      metadata: { patientUserId: patient.id }
+    });
     return created;
   });
   return { ...toDoctorReferralResponse(referral), accessToken };
@@ -105,9 +115,13 @@ export async function addReferralToPatientCart(patientId: string, accessToken: s
   if (referral.status === ReferralStatus.SENT) {
     await prisma.referral.updateMany({ where: { id: referral.id, status: ReferralStatus.SENT }, data: { status: ReferralStatus.VIEWED, viewedAt: new Date() } });
   }
-  for (const item of referral.items) {
-    await addCartItem(patientId, { productId: item.productId, quantity: item.quantity });
-  }
+  // All-or-nothing: a failure partway through (e.g. a product deactivated
+  // between items) must not leave a partially filled cart.
+  await prisma.$transaction(async (transaction) => {
+    for (const item of referral.items) {
+      await addCartItemInTransaction(transaction, patientId, item.productId, item.quantity);
+    }
+  });
   return getPatientReferral(patientId, accessToken);
 }
 
@@ -122,6 +136,12 @@ export async function markReferralOrdered(transaction: Parameters<Parameters<typ
   const updated = await transaction.referral.updateMany({ where: { id: referralId, status: ReferralStatus.VIEWED }, data: { status: ReferralStatus.ORDERED, orderedAt: new Date() } });
   if (updated.count !== 1) throw new AppError(409, "REFERRAL_STATE_CONFLICT", "Referral is no longer available for ordering");
   await recordAnalyticsEvent(transaction, "REFERRAL_ORDERED", { entityType: "REFERRAL", entityId: referralId });
+  await recordAuditEvent(transaction, {
+    eventType: "REFERRAL_STATUS_CHANGED",
+    resourceType: "REFERRAL",
+    resourceId: referralId,
+    metadata: { from: ReferralStatus.VIEWED, to: ReferralStatus.ORDERED }
+  });
 }
 
 export async function markReferralFulfilled(transaction: Parameters<Parameters<typeof prisma.$transaction>[0]>[0], orderId: string) {
@@ -129,6 +149,12 @@ export async function markReferralFulfilled(transaction: Parameters<Parameters<t
   if (!referral) return;
   await transaction.referral.update({ where: { id: referral.id }, data: { status: ReferralStatus.FULFILLED, fulfilledAt: new Date() } });
   await recordAnalyticsEvent(transaction, "REFERRAL_FULFILLED", { entityType: "REFERRAL", entityId: referral.id });
+  await recordAuditEvent(transaction, {
+    eventType: "REFERRAL_STATUS_CHANGED",
+    resourceType: "REFERRAL",
+    resourceId: referral.id,
+    metadata: { from: ReferralStatus.ORDERED, to: ReferralStatus.FULFILLED }
+  });
 }
 
 async function findPatientReferral(patientId: string, accessToken: string) {

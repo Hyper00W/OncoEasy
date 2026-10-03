@@ -111,6 +111,6 @@ consultationRouter.patch(
 );
 
 export const adminConsultationRouter = Router();
-adminConsultationRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminConsultationRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminConsultationRouter.get("/appointments", validateRequest({ query: adminAppointmentListQuerySchema }), listAdmin);
 adminConsultationRouter.get("/appointments/:appointmentId", validateRequest({ params: appointmentParamsSchema }), getAdmin);

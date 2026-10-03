@@ -111,6 +111,7 @@ export function listProducts(query: Record<string, string | number | boolean | u
   Object.entries(query).forEach(([key, value]) => { if (value !== undefined && value !== "") params.set(key, String(value)); });
   return data(apiClient.get<Envelope<{ items: Product[]; pagination: { total: number; totalPages: number } }>>(`/api/v1/pharmacy/products?${params}`));
 }
+export function getProduct(productId: string) { return data(apiClient.get<Envelope<Product>>(`/api/v1/pharmacy/products/${productId}`)); }
 export function getCart() { return data(apiClient.get<Envelope<Cart>>("/api/v1/pharmacy/cart")); }
 export function addCartItem(productId: string, quantity: number) { return data(apiClient.post<Envelope<Cart>>("/api/v1/pharmacy/cart/items", { productId, quantity })); }
 export function updateCartItem(productId: string, quantity: number) { return data(apiClient.patch<Envelope<Cart>>(`/api/v1/pharmacy/cart/items/${productId}`, { quantity })); }

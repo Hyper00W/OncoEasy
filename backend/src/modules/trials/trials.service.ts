@@ -5,6 +5,7 @@ import { AppError } from "../../errors/app-error";
 import { toInterestResponse, toTrialResponse } from "./trials.mapper";
 import type { CreateInterestInput, CreateTrialInput, TrialListQuery, UpdateInterestStatusInput, UpdateTrialInput } from "./trials.schemas";
 import { recordAnalyticsEvent } from "../analytics/analytics.events";
+import { recordAuditEvent } from "../../observability/audit";
 
 const publicSelect = {
   id: true, title: true, summary: true, description: true, source: true, sourceTrialId: true, sourceUrl: true,
@@ -82,6 +83,13 @@ export async function publishAdminTrial(adminId: string, trialId: string, isPubl
   await assertAdmin(adminId);
   try {
     const trial = await prisma.clinicalTrial.update({ where: { id: trialId }, data: { isPublished, publishedAt: isPublished ? new Date() : null, updatedById: adminId }, include: adminInclude });
+    await recordAuditEvent(prisma, {
+      eventType: isPublished ? "TRIAL_PUBLISHED" : "TRIAL_UPDATED",
+      actorUserId: adminId,
+      actorRole: "OPS_ADMIN",
+      resourceType: "CLINICAL_TRIAL",
+      resourceId: trialId
+    });
     return toTrialResponse(trial, true);
   } catch (error) {
     if (isCode(error, "P2025")) throw new AppError(404, "CLINICAL_TRIAL_NOT_FOUND", "Clinical trial was not found");
@@ -103,6 +111,14 @@ export async function updateInterestStatus(adminId: string, interestId: string, 
   await assertAdmin(adminId);
   try {
     const interest = await prisma.trialInterest.update({ where: { id: interestId }, data: { status: input.status, updatedById: adminId }, include: interestInclude });
+    await recordAuditEvent(prisma, {
+      eventType: "TRIAL_INTEREST_STATUS_CHANGED",
+      actorUserId: adminId,
+      actorRole: "OPS_ADMIN",
+      resourceType: "TRIAL_INTEREST",
+      resourceId: interestId,
+      metadata: { to: input.status }
+    });
     return toInterestResponse(interest, true);
   } catch (error) {
     if (isCode(error, "P2025")) throw new AppError(404, "TRIAL_INTEREST_NOT_FOUND", "Trial interest was not found");

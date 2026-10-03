@@ -15,7 +15,7 @@ trialsRouter.get("/:trialId", validateRequest({ params: trialIdParamsSchema }), 
 trialsRouter.post("/:trialId/interest", validateRequest({ params: trialIdParamsSchema, body: createInterestSchema }), createInterest);
 
 export const adminTrialsRouter = Router();
-adminTrialsRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminTrialsRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminTrialsRouter.get("/trial-interests", validateRequest({ query: trialListQuerySchema }), listAdminInterest);
 adminTrialsRouter.patch("/trial-interests/:interestId/status", validateRequest({ params: interestIdParamsSchema, body: updateInterestStatusSchema }), updateInterest);
 adminTrialsRouter.get("/trials", validateRequest({ query: trialListQuerySchema }), listAdmin);

@@ -64,10 +64,15 @@ export async function advancePatientJourney(patientId: string, nextStage: Journe
 
   const targetStage = await getActiveStage(nextStage);
   await prisma.$transaction(async (transaction) => {
-    await transaction.patientJourney.update({
-      where: { id: journey.id },
+    // Conditional advance: only a journey still on the observed stage moves,
+    // so a double-submitted advance cannot create duplicate history entries.
+    const advanced = await transaction.patientJourney.updateMany({
+      where: { id: journey.id, currentStage: journey.currentStage },
       data: { currentStage: nextStage }
     });
+    if (advanced.count === 0) {
+      throw new AppError(409, "JOURNEY_STAGE_TRANSITION_INVALID", "Journey stage has already changed");
+    }
     await transaction.patientJourneyStageHistory.create({
       data: { patientJourneyId: journey.id, fromStage: journey.currentStage, toStage: nextStage }
     });

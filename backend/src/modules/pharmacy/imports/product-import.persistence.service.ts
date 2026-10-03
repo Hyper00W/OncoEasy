@@ -2,6 +2,7 @@ import { Prisma, ProductImportJobStatus, ProductImportRowAction, ProductImportRo
 
 import { prisma } from "../../../database/prisma";
 import { AppError } from "../../../errors/app-error";
+import { recordAuditEventSafe } from "../../../observability/audit";
 import {
   ProductImportFileError,
   type NormalizedProductImportRow,
@@ -104,6 +105,22 @@ export async function persistProductImport(
     where: { id: job.id },
     data: { status: finalStatus, createdProducts, updatedProducts, failedRows, completedAt: new Date() },
     include: jobInclude
+  });
+
+  // Important Ops mutation: catalog bulk change summary (counts only — no
+  // row contents or file contents).
+  await recordAuditEventSafe({
+    eventType: "PRODUCT_IMPORT_COMPLETED",
+    actorUserId: createdByUserId,
+    resourceType: "PRODUCT_IMPORT_JOB",
+    resourceId: job.id,
+    metadata: {
+      status: finalStatus,
+      createdProducts,
+      updatedProducts,
+      failedRows,
+      invalidRows: validation.invalidRows
+    }
   });
 
   return {

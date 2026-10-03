@@ -25,7 +25,7 @@ const proofUpload = multer({
 export const deliveryAgentRouter = Router();
 
 export const adminDeliveryRouter = Router();
-adminDeliveryRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminDeliveryRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminDeliveryRouter.get("/", validateRequest({ query: adminDeliveryListQuerySchema }), listAdmin);
 adminDeliveryRouter.get("/:deliveryId", validateRequest({ params: deliveryParamsSchema }), getAdmin);
 

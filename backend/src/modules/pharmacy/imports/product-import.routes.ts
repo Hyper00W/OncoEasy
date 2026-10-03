@@ -37,7 +37,7 @@ function parseUpload(
 }
 
 export const productImportRouter = Router();
-productImportRouter.use(authenticate, requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN));
+productImportRouter.use(authenticate, requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN, UserRole.OWNER));
 productImportRouter.post("/", parseUpload, importProducts);
 productImportRouter.get(
   "/",

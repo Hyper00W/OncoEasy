@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AdminPortalShell } from "../admin/AdminPortalShell";
 import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
 import {
   listAdminJourneyStages,
@@ -13,7 +14,7 @@ import {
 type Navigate = (path: string) => void;
 
 export function AdminJourneyPage({ navigate }: { navigate: Navigate }) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [stages, setStages] = useState<JourneyStage[]>([]);
   const [selected, setSelected] = useState<JourneyStage | null>(null);
   const [title, setTitle] = useState("");
@@ -25,22 +26,17 @@ export function AdminJourneyPage({ navigate }: { navigate: Navigate }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  useEffect(() => {
-    listAdminJourneyStages()
-      .then((response) => {
-        setStages(response);
-        if (response[0]) selectStage(response[0]);
-      })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
-  }, []);
-
-  function leave(): void {
-    signOut();
-    navigate("/");
+  function selectStage(stage: JourneyStage): void {
+    setSelected(stage);
+    setTitle(stage.title);
+    setDescription(stage.description);
+    setChecklistText(asChecklist(stage.checklist).join("\n"));
+    setIsActive(stage.isActive);
+    setError(null);
   }
 
   function load(): void {
+    setError(null);
     listAdminJourneyStages()
       .then((response) => {
         setStages(response);
@@ -52,14 +48,33 @@ export function AdminJourneyPage({ navigate }: { navigate: Navigate }) {
       .catch((requestError: unknown) => setError(getErrorMessage(requestError)));
   }
 
-  function selectStage(stage: JourneyStage): void {
-    setSelected(stage);
-    setTitle(stage.title);
-    setDescription(stage.description);
-    setChecklistText(asChecklist(stage.checklist).join("\n"));
-    setIsActive(stage.isActive);
-    setError(null);
-  }
+  useEffect(() => {
+    let stale = false;
+
+    listAdminJourneyStages()
+      .then((response) => {
+        if (stale) return; // a newer request superseded this response
+        setStages(response);
+        const first = response[0];
+        if (first) {
+          setSelected(first);
+          setTitle(first.title);
+          setDescription(first.description);
+          setChecklistText(asChecklist(first.checklist).join("\n"));
+          setIsActive(first.isActive);
+        }
+      })
+      .catch((requestError: unknown) => {
+        if (!stale) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!stale) setLoading(false);
+      });
+
+    return () => {
+      stale = true;
+    };
+  }, []);
 
   function save(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -89,16 +104,16 @@ export function AdminJourneyPage({ navigate }: { navigate: Navigate }) {
   if (!user) return null;
 
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Operations admin</p>
-          <h1>Journey stages</h1>
-          <p className="intro">Review and publish the content patients see for each care stage.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
-
+    <AdminPortalShell
+      navigate={navigate}
+      activePath="/admin/journey"
+      title="Care journey"
+      actions={
+        <Button className="button-secondary" type="button" onClick={load}>
+          Refresh
+        </Button>
+      }
+    >
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <div className="success-message" role="status">{notice}</div> : null}
 
@@ -151,7 +166,7 @@ export function AdminJourneyPage({ navigate }: { navigate: Navigate }) {
           ) : null}
         </section>
       )}
-    </main>
+    </AdminPortalShell>
   );
 }
 

@@ -1,35 +1,36 @@
+import { useEffect } from "react";
+
 import { useAuth } from "../auth/AuthContext";
-import type { UserRole } from "../auth/types";
-import { Button, Panel } from "../components/ui";
 import { PatientDashboardPage } from "./PatientDashboardPage";
 
 type Navigate = (path: string) => void;
 
-const roleDetails: Record<UserRole, { title: string; description: string }> = {
-  PATIENT: {
-    title: "Patient workspace",
-    description: "Your care journey will appear here as the next modules are connected."
-  },
-  DOCTOR: {
-    title: "Doctor portal",
-    description: "Clinical workspace modules will appear here in the next phase."
-  },
-  PHARMACIST: {
-    title: "Pharmacist portal",
-    description: "Pharmacy workspace modules will appear here in the next phase."
-  },
-  OPS_ADMIN: {
-    title: "Operations admin",
-    description: "Operations tools will appear here as they are implemented."
-  },
-  DELIVERY_AGENT: {
-    title: "Delivery agent portal",
-    description: "Assigned local deliveries and delivery proof actions."
-  }
+const ROLE_HOME: Partial<Record<string, string>> = {
+  DOCTOR: "/doctor",
+  PHARMACIST: "/pharmacist",
+  OPS_ADMIN: "/admin",
+  // OWNER shares the management console; without this entry an unknown
+  // protected path under an OWNER session rendered a blank page.
+  OWNER: "/admin"
 };
 
+/**
+ * Router fallback for authenticated protected paths without a dedicated
+ * route. Each role's primary workspace has real pages, so this redirects
+ * unknown role sub-paths to the role home; the delivery agent keeps its
+ * existing pharmacy workspace link.
+ */
 export function RoleShell({ navigate }: { navigate: Navigate }) {
   const { user, signOut } = useAuth();
+
+  const homePath = user ? ROLE_HOME[user.role] : undefined;
+
+  useEffect(() => {
+    if (user && homePath) {
+      navigate(homePath);
+    }
+  }, [user, homePath, navigate]);
+
   if (!user) {
     return null;
   }
@@ -38,51 +39,72 @@ export function RoleShell({ navigate }: { navigate: Navigate }) {
     return <PatientDashboardPage navigate={navigate} />;
   }
 
-  const details = roleDetails[user.role];
-
-  function handleSignOut(): void {
-    signOut();
-    navigate("/");
+  if (homePath) {
+    return <div className="route-loading">Opening your workspace...</div>;
   }
 
+  if (user.role === "DELIVERY_AGENT") {
+    return (
+      <main className="workspace-page">
+        <header className="workspace-header">
+          <div>
+            <p className="eyebrow">OncoEasy</p>
+            <h1>Delivery agent portal</h1>
+          </div>
+          <button
+            className="button button-secondary"
+            type="button"
+            onClick={() => {
+              signOut();
+              navigate("/");
+            }}
+          >
+            Sign out
+          </button>
+        </header>
+        <section className="panel">
+          <p>Assigned local deliveries and delivery proof actions live in the pharmacy workspace.</p>
+          <div className="button-row">
+            <button className="button" type="button" onClick={() => navigate("/delivery-agent/pharmacy")}>
+              Open assigned deliveries
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // Last resort (unknown role/unmapped path): never a blank screen — explain
+  // what happened and offer the way back.
   return (
     <main className="workspace-page">
       <header className="workspace-header">
         <div>
           <p className="eyebrow">OncoEasy</p>
-          <h1>{details.title}</h1>
+          <h1>This page isn’t part of your workspace</h1>
         </div>
-        <Button className="button-secondary" type="button" onClick={handleSignOut}>
-          Sign out
-        </Button>
       </header>
-      <Panel>
-        <p className="role-badge">{user.role}</p>
-        <h2>Authentication complete</h2>
-        <p>{details.description}</p>
-        <p className="muted">Signed in as {user.email ?? user.phone ?? user.fullName ?? "OncoEasy user"}.</p>
-        {user.role === "DOCTOR" ? (
-          <div className="button-row">
-            <Button type="button" onClick={() => navigate("/doctor/referrals")}>Open medicine referrals</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/doctor/consultations")}>Open consultations</Button>
-          </div>
-        ) : null}
-        {user.role === "OPS_ADMIN" ? (
-          <div className="button-row">
-            <Button type="button" onClick={() => navigate("/admin")}>Open operations overview</Button>
-            <Button type="button" onClick={() => navigate("/admin/labs")}>Open lab bookings</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/admin/pap")}>Open PAP Navigator</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/admin/journey")}>Open journey stages</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/admin/knowledge")}>Open knowledge articles</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/admin/trials")}>Open clinical trials</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/admin/stories")}>Open patient stories</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/admin/chat")}>Open chat escalations</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/admin/referrals")}>Open referral operations</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/admin/consultations")}>Open consultation operations</Button>
-            <Button className="button-secondary" type="button" onClick={() => navigate("/admin/analytics")}>Open analytics</Button>
-          </div>
-        ) : null}
-      </Panel>
+      <section className="panel">
+        <p>
+          The link may be outdated, or this page may not exist for your account. Head back to the
+          homepage, or sign in with the account that has access.
+        </p>
+        <div className="button-row">
+          <button className="button" type="button" onClick={() => navigate("/")}>
+            Go to the homepage
+          </button>
+          <button
+            className="button button-secondary"
+            type="button"
+            onClick={() => {
+              signOut();
+              navigate("/auth");
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      </section>
     </main>
   );
 }

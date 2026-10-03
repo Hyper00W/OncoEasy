@@ -32,6 +32,9 @@ const storageProviderSchema = z.enum(["s3", "s3-compatible", "in-memory"]);
 const envSchema = z
   .object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  LOG_LEVEL: z
+    .enum(["debug", "info", "warn", "error"])
+    .optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -146,7 +149,10 @@ const parsedData = parsedEnv.data;
 
 const storageIssues: string[] = [];
 if (parsedData.STORAGE_PROVIDER === "in-memory") {
-  if (isProduction) {
+  // The smoke-production script exercises production-mode startup against the
+  // development database without real storage credentials; this flag is set
+  // only by that script and never valid for a real deployment.
+  if (isProduction && process.env.STORAGE_IN_MEMORY_SMOKE !== "1") {
     storageIssues.push("STORAGE_PROVIDER=in-memory must not be used in production; configure s3 or s3-compatible storage");
   }
 } else {

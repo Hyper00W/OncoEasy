@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AdminPortalShell } from "../admin/AdminPortalShell";
 import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
 import {
   createStory,
@@ -34,7 +35,7 @@ const emptyForm = {
 };
 
 export function AdminStoriesPage({ navigate }: { navigate: Navigate }) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [stories, setStories] = useState<AdminStory[]>([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize, total: 0, totalPages: 1 });
   const [selected, setSelected] = useState<AdminStory | null>(null);
@@ -50,6 +51,8 @@ export function AdminStoriesPage({ navigate }: { navigate: Navigate }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    let stale = false;
+
     listAdminStories({
       page: query.page,
       pageSize,
@@ -57,17 +60,21 @@ export function AdminStoriesPage({ navigate }: { navigate: Navigate }) {
       isPublished: query.published === "ALL" ? undefined : query.published === "PUBLISHED"
     })
       .then((response) => {
+        if (stale) return; // a newer query superseded this response
         setStories(response.items);
         setPagination(response.pagination);
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
-  }, [query]);
+      .catch((requestError: unknown) => {
+        if (!stale) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!stale) setLoading(false);
+      });
 
-  function leave(): void {
-    signOut();
-    navigate("/");
-  }
+    return () => {
+      stale = true;
+    };
+  }, [query]);
 
   function runQuery(next: AdminStoriesQuery): void {
     setError(null);
@@ -199,16 +206,12 @@ export function AdminStoriesPage({ navigate }: { navigate: Navigate }) {
   if (!user) return null;
 
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Operations admin</p>
-          <h1>Patient stories</h1>
-          <p className="intro">Curate patient stories through review and publication. Publication always requires recorded consent and approval.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
-
+    <AdminPortalShell
+      navigate={navigate}
+      activePath="/admin/stories"
+      title="Patient stories"
+      actions={<Button type="button" onClick={startCreate}>New story</Button>}
+    >
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <div className="success-message" role="status">{notice}</div> : null}
 
@@ -216,7 +219,6 @@ export function AdminStoriesPage({ navigate }: { navigate: Navigate }) {
         <Panel>
           <div className="detail-header">
             <h2>Stories</h2>
-            <Button type="button" onClick={startCreate}>New story</Button>
           </div>
           <form className="form-stack" onSubmit={applyFilters}>
             <Field label="Review status" htmlFor="stories-admin-status">
@@ -255,7 +257,7 @@ export function AdminStoriesPage({ navigate }: { navigate: Navigate }) {
 
           <div className="button-row">
             <Button className="button-secondary" type="button" disabled={loading || pagination.page <= 1} onClick={() => runQuery({ ...query, page: pagination.page - 1 })}>Previous</Button>
-            <span className="field-hint">Page {pagination.page} of {Math.max(pagination.totalPages, 1)} • {pagination.total} story(ies)</span>
+            <span className="field-hint">Page {pagination.page} of {Math.max(pagination.totalPages, 1)} • {pagination.total} {pagination.total === 1 ? "story" : "stories"}</span>
             <Button className="button-secondary" type="button" disabled={loading || pagination.page >= pagination.totalPages} onClick={() => runQuery({ ...query, page: pagination.page + 1 })}>Next</Button>
           </div>
         </Panel>
@@ -322,7 +324,7 @@ export function AdminStoriesPage({ navigate }: { navigate: Navigate }) {
           </Panel>
         ) : null}
       </section>
-    </main>
+    </AdminPortalShell>
   );
 }
 

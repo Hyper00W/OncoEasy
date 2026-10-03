@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
+import { PatientPageShell } from "../shell/PatientPageShell";
+import { Alert, BackLink, Button, EmptyState, Field, Input, LoadingState, PageHero, Panel } from "../components/ui";
+import { FlaskIcon } from "../components/icons";
 import {
   getPublishedTrial,
   listMyTrialInterests,
@@ -41,6 +43,8 @@ export function PatientTrialsPage({ navigate }: { navigate: Navigate }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    const stale = false;
+
     listPublishedTrials({
       page: query.page,
       pageSize,
@@ -48,17 +52,23 @@ export function PatientTrialsPage({ navigate }: { navigate: Navigate }) {
       status: query.status || undefined
     })
       .then((response) => {
+        if (stale) return; // a newer query superseded this response
         setTrials(response.items);
         setPagination(response.pagination);
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
+      .catch((requestError: unknown) => {
+        if (!stale) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!stale) setLoading(false);
+      });
   }, [query]);
 
   function leave(): void {
     signOut();
     navigate("/");
   }
+  void leave;
 
   function loadInterests(): void {
     setError(null);
@@ -87,19 +97,29 @@ export function PatientTrialsPage({ navigate }: { navigate: Navigate }) {
     runQuery({ page: 1, search: "", status: "" });
   }
 
+  const detailRequestToken = useRef(0);
+
   function openTrial(trialId: string): void {
+    const requestToken = ++detailRequestToken.current;
     setDetailLoading(true);
     setError(null);
     setNotice(null);
     getPublishedTrial(trialId)
-      .then(setTrial)
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setDetailLoading(false));
+      .then((trial) => {
+        if (detailRequestToken.current !== requestToken) return; // a newer trial was opened
+        setTrial(trial);
+      })
+      .catch((requestError: unknown) => {
+        if (detailRequestToken.current === requestToken) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (detailRequestToken.current === requestToken) setDetailLoading(false);
+      });
   }
 
   function expressInterest(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (!trial) return;
+    if (!trial || submitting) return; // one interest submission at a time
     setSubmitting(true);
     setError(null);
     submitTrialInterest(trial.trialId, interestNotes.trim() || undefined)
@@ -114,22 +134,39 @@ export function PatientTrialsPage({ navigate }: { navigate: Navigate }) {
 
   if (!user) return null;
 
+  const hasFilters = Boolean(query.search || query.status);
+
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Research information</p>
-          <h1>Clinical trials</h1>
-          <p className="intro">Browse published clinical trial information and register your interest to be contacted. This information is educational and is not medical advice.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
+    <PatientPageShell
+      navigate={navigate}
+      activePath="/patient/trials"
+      className="trials-page"
+      backSlot={<BackLink navigate={navigate} fallback="/patient" label="Back to dashboard" />}
+    >
+      <PageHero
+        tone="blue"
+        eyebrow="Clinical Research &amp; Protocols"
+        title="Oncology clinical trials,"
+        highlight="novel treatments."
+        description="Discover published clinical trials and research protocols investigating advanced oncology drugs and therapies. Register interest to connect with study teams."
+        image="/assets/banner/specialty-medicines.jpg"
+        imageAlt="Specialized clinical research medications"
+        badge={
+          <>
+            <FlaskIcon size={16} /> Clinical Trials Directory
+          </>
+        }
+        crumbs={[
+          { label: "Dashboard", href: "/patient" },
+          { label: "Clinical trials" }
+        ]}
+      />
 
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <div className="success-message" role="status">{notice}</div> : null}
 
       <section className="consultation-grid">
-        <Panel>
+        <Panel className="panel-fluid">
           <h2>Search and filter</h2>
           <form className="form-stack" onSubmit={applySearch}>
             <Field label="Search trials" htmlFor="trials-search">
@@ -149,22 +186,32 @@ export function PatientTrialsPage({ navigate }: { navigate: Navigate }) {
           </form>
         </Panel>
 
-        <Panel>
+        <Panel className="panel-fluid">
           <h2>Published trials</h2>
           {loading ? (
             <LoadingState label="Loading trials..." />
           ) : trials.length === 0 ? (
-            <p className="empty-state">No published trials match your search.</p>
+            <EmptyState
+              icon={<FlaskIcon size={22} />}
+              title={hasFilters ? "No trials match your search" : "No trials are published yet"}
+              hint={hasFilters ? "Try a different search term or recruitment status." : "Curated clinical trial listings will appear here as they are published."}
+            />
           ) : (
-            <div className="stack-list">
+            <div className="trial-list">
               {trials.map((item) => (
-                <button className="list-row list-row-button" type="button" key={item.trialId} onClick={() => openTrial(item.trialId)}>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span className="muted">{formatStatus(item.status)}{item.sponsor ? ` • ${item.sponsor}` : ""}{item.location ? ` • ${item.location}` : ""}</span>
-                    <span className="muted">{item.summary}</span>
-                  </div>
-                  <span className="status">View</span>
+                <button className="trial-card" type="button" key={item.trialId} onClick={() => openTrial(item.trialId)}>
+                  <span className="trial-card-head">
+                    <span className="status">{formatStatus(item.status)}</span>
+                    <span className="trial-card-arrow" aria-hidden="true">→</span>
+                  </span>
+                  <strong className="trial-card-title">{item.title}</strong>
+                  {item.summary ? <span className="trial-card-summary">{item.summary}</span> : null}
+                  {(item.sponsor || item.location) && (
+                    <span className="trial-card-meta">
+                      {item.sponsor ? <span>{item.sponsor}</span> : null}
+                      {item.location ? <span>{item.location}</span> : null}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -210,7 +257,7 @@ export function PatientTrialsPage({ navigate }: { navigate: Navigate }) {
         ) : null}
 
         {interestsLoaded ? (
-          <Panel>
+          <Panel className="panel-fluid">
             <h2>My trial interests</h2>
             {interests.length === 0 ? (
               <p className="empty-state">You have not expressed interest in any trials yet.</p>
@@ -230,7 +277,15 @@ export function PatientTrialsPage({ navigate }: { navigate: Navigate }) {
           </Panel>
         ) : null}
       </section>
-    </main>
+
+      <div className="disclaimer-band" role="note">
+        <p>
+          OncoEasy shares trial listings for education only. Eligibility is always confirmed by the
+          study team after their own screening — never by OncoEasy. Talk with your care team before
+          making any treatment decision.
+        </p>
+      </div>
+    </PatientPageShell>
   );
 }
 

@@ -74,14 +74,14 @@ prescriptionRouter.get(
 prescriptionRouter.get(
   "/review-queue",
   authenticate,
-  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN),
+  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN, UserRole.OWNER),
   validateRequest({ query: prescriptionListQuerySchema }),
   listReviewQueue
 );
 prescriptionRouter.get(
   "/review/:prescriptionId",
   authenticate,
-  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN),
+  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN, UserRole.OWNER),
   validateRequest({ params: prescriptionParamsSchema }),
   getReviewPrescription
 );
@@ -95,21 +95,21 @@ prescriptionRouter.get(
 prescriptionRouter.patch(
   "/:prescriptionId/verify",
   authenticate,
-  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN),
+  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN, UserRole.OWNER),
   validateRequest({ params: prescriptionParamsSchema }),
   verifyReviewPrescription
 );
 prescriptionRouter.patch(
   "/:prescriptionId/reject",
   authenticate,
-  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN),
+  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN, UserRole.OWNER),
   validateRequest({ params: prescriptionParamsSchema, body: prescriptionReviewReasonSchema }),
   rejectReviewPrescription
 );
 prescriptionRouter.patch(
   "/:prescriptionId/query",
   authenticate,
-  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN),
+  requireRole(UserRole.PHARMACIST, UserRole.OPS_ADMIN, UserRole.OWNER),
   validateRequest({ params: prescriptionParamsSchema, body: prescriptionReviewReasonSchema }),
   queryReviewPrescription
 );

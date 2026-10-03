@@ -15,6 +15,6 @@ chatRouter.get("/sessions/:sessionId", validateRequest({ params: sessionIdParams
 chatRouter.post("/sessions/:sessionId/messages", validateRequest({ params: sessionIdParamsSchema, body: createMessageSchema }), message);
 
 export const adminChatRouter = Router();
-adminChatRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminChatRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminChatRouter.get("/sessions", validateRequest({ query: adminSessionListQuerySchema }), adminList);
 adminChatRouter.get("/sessions/:sessionId", validateRequest({ params: sessionIdParamsSchema }), adminGet);

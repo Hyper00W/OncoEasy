@@ -37,6 +37,15 @@ export async function listCategories() {
 export async function listProducts(query: ProductListQuery) {
   const where = {
     isActive: true,
+    // Phase 1.7.5 contract: "Only active products and active categories are
+    // public." The category-active check applies even without a category
+    // filter, so deactivating a category hides its products everywhere.
+    category: {
+      is: {
+        isActive: true,
+        ...(query.category ? { slug: query.category } : {})
+      }
+    },
     ...(query.search
       ? {
           OR: [
@@ -44,9 +53,6 @@ export async function listProducts(query: ProductListQuery) {
             { sku: { contains: query.search, mode: "insensitive" as const } }
           ]
         }
-      : {}),
-    ...(query.category
-      ? { category: { is: { slug: query.category, isActive: true } } }
       : {}),
     ...(query.prescriptionRequired === undefined
       ? {}

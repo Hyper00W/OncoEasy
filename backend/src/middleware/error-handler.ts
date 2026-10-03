@@ -1,19 +1,43 @@
 import type { ErrorRequestHandler } from "express";
 
 import { AppError } from "../errors/app-error";
+import { describeError, errorLogger } from "../observability/error-diagnostics";
+import { getRequestContext, REQUEST_ID_HEADER_NAME } from "../observability/request-context";
 
 export const errorHandler: ErrorRequestHandler = (
   error,
-  _request,
+  request,
   response,
   _next
 ) => {
+  // Safe, correlated diagnostics: one log line per error with the request ID,
+  // the failing route, and a safe error category — never a stack trace,
+  // provider payload, or database detail.
+  const diagnostics = describeError(error);
+  const route = request.route?.path ?? request.path;
+  const logFields = {
+    ...diagnostics.fields,
+    method: request.method,
+    path: route
+  };
+  if (diagnostics.level === "error") {
+    errorLogger.error("http_request_error", logFields);
+  } else {
+    errorLogger.warn("http_request_rejected", logFields);
+  }
+
+  const requestId = getRequestContext()?.requestId ?? null;
+  if (requestId) {
+    response.setHeader(REQUEST_ID_HEADER_NAME, requestId);
+  }
+
   if (error instanceof AppError) {
     response.status(error.statusCode).json({
       success: false,
       error: {
         code: error.code,
-        message: error.message
+        message: error.message,
+        ...(requestId ? { requestId } : {})
       }
     });
     return;
@@ -24,7 +48,8 @@ export const errorHandler: ErrorRequestHandler = (
       success: false,
       error: {
         code: "MALFORMED_JSON",
-        message: "Request body contains invalid JSON"
+        message: "Request body contains invalid JSON",
+        ...(requestId ? { requestId } : {})
       }
     });
     return;
@@ -34,7 +59,8 @@ export const errorHandler: ErrorRequestHandler = (
     success: false,
     error: {
       code: "INTERNAL_SERVER_ERROR",
-      message: "An unexpected error occurred"
+      message: "An unexpected error occurred",
+      ...(requestId ? { requestId } : {})
     }
   });
 };

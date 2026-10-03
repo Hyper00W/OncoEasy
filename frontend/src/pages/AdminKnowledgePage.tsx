@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AdminPortalShell } from "../admin/AdminPortalShell";
 import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
 import {
   createArticle,
@@ -26,7 +27,7 @@ type AdminKnowledgeQuery = {
 const pageSize = 10;
 
 export function AdminKnowledgePage({ navigate }: { navigate: Navigate }) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [articles, setArticles] = useState<AdminKnowledgeArticle[]>([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize, total: 0, totalPages: 1 });
   const [selected, setSelected] = useState<AdminKnowledgeArticle | null>(null);
@@ -47,6 +48,8 @@ export function AdminKnowledgePage({ navigate }: { navigate: Navigate }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    let stale = false;
+
     listAdminArticles({
       page: query.page,
       pageSize,
@@ -55,17 +58,21 @@ export function AdminKnowledgePage({ navigate }: { navigate: Navigate }) {
       isPublished: query.published === "ALL" ? undefined : query.published === "PUBLISHED"
     })
       .then((response) => {
+        if (stale) return; // a newer query superseded this response
         setArticles(response.items);
         setPagination(response.pagination);
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
-  }, [query]);
+      .catch((requestError: unknown) => {
+        if (!stale) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!stale) setLoading(false);
+      });
 
-  function leave(): void {
-    signOut();
-    navigate("/");
-  }
+    return () => {
+      stale = true;
+    };
+  }, [query]);
 
   function runQuery(next: AdminKnowledgeQuery): void {
     setError(null);
@@ -161,25 +168,18 @@ export function AdminKnowledgePage({ navigate }: { navigate: Navigate }) {
   if (!user) return null;
 
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Operations admin</p>
-          <h1>Knowledge articles</h1>
-          <p className="intro">Create and maintain the published patient education articles.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
-
+    <AdminPortalShell
+      navigate={navigate}
+      activePath="/admin/knowledge"
+      title="Knowledge"
+      actions={<Button type="button" onClick={startCreate}>New article</Button>}
+    >
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <div className="success-message" role="status">{notice}</div> : null}
 
       <section className="consultation-grid">
         <Panel>
-          <div className="detail-header">
-            <h2>Articles</h2>
-            <Button type="button" onClick={startCreate}>New article</Button>
-          </div>
+          <h2>Articles</h2>
           <form className="form-stack" onSubmit={applyFilters}>
             <Field label="Search articles" htmlFor="knowledge-admin-search">
               <Input id="knowledge-admin-search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search titles and content" />
@@ -273,7 +273,7 @@ export function AdminKnowledgePage({ navigate }: { navigate: Navigate }) {
           </Panel>
         ) : null}
       </section>
-    </main>
+    </AdminPortalShell>
   );
 }
 

@@ -4,7 +4,13 @@ This document covers environment configuration for running OncoEasy. It is confi
 
 ## 1. Required backend environment variables
 
-Set these in the backend process environment (or a `backend/.env` file locally). Validation is centralized in `backend/src/config/env.ts`; the server refuses to start and prints each invalid variable.
+Set these in the backend process environment (or a `backend/.env` file locally). Validation is centralized in `backend/src/config/env.ts`; the server refuses to start and prints each invalid variable (never its value).
+
+Grouped by deployment obligation (Phase 4.9):
+
+- **Required — startup fails without them:** `NODE_ENV`, `DATABASE_URL`, `CORS_ORIGIN` (required in production), `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `JWT_ACCESS_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, and `STORAGE_PROVIDER` that is **not** `in-memory` together with its bucket/region/credentials.
+- **Optional — but required when that integration is enabled:** the `WHATSAPP_*`, `SMS_*`, `PAYMENT_GATEWAY_*`, and `EMAIL_*` groups below. Enabling a channel without its credentials fails startup; leaving it disabled requires nothing.
+- **Manual operational setup — no environment variable:** DNS/domain, webhook registration, database backups/PITR, private-bucket versioning, monitoring/alerting, and provider dashboards (see §10).
 
 | Variable | Required | Notes |
 | --- | --- | --- |
@@ -135,7 +141,7 @@ gap list live in `deployment.md`.
 - Example files contain placeholders only.
 - JWT secrets, database credentials, and provider secrets stay backend-only. Only `VITE_*` variables reach the frontend bundle.
 
-## 8. Database (production readiness — Phase 3.9)
+## 9. Database (production readiness — Phase 3.9)
 
 - Production requires a managed-PostgreSQL `DATABASE_URL` (TLS required, e.g. Neon's `sslmode=require&channel_binding=require`). Startup **fails fast** if a production process is handed a localhost database URL.
 - The **only** production migration command is `npm run db:migrate:deploy` (`prisma migrate deploy`). Run it **before** deploying a release whose code depends on schema changes. `prisma migrate dev`, `prisma db push`, `migrate reset`, and `db seed` are forbidden in production (reset destroys data; push/dev cause drift; seed only runs in `NODE_ENV=development`).
@@ -143,6 +149,87 @@ gap list live in `deployment.md`.
 - One shared `PrismaClient`; SIGTERM/SIGINT gracefully close the HTTP server and disconnect Prisma.
 - Backups/PITR are a managed-provider + operator responsibility (the application performs none). The application provides no schema rollback: roll back by redeploying the previous release and keep schema changes additive for one release, or forward-fix with a new migration; restore from PITR for destructive incidents.
 - Full operational detail: `docs/database-operations.md`.
+
+### Testimonials — admin-managed media content (Phase 4.1)
+
+- `testimonials` table: `type` (`IMAGE`/`VIDEO`), title, description, `display_name`, `display_order`, `published`, private-storage media fields (`media_storage_key`, checksum, mime type). No patient records are referenced; only admin-entered public fields exist.
+- **Endpoints:** `GET /api/v1/testimonials` (public; published only, ordered `display_order` then `created_at`) and OPS_ADMIN-only CRUD under `GET/POST/PATCH/DELETE /api/v1/admin/testimonials` plus `POST /api/v1/admin/testimonials/:id/media?type=IMAGE|VIDEO`.
+- **Media delivery (Phase 4.2):** the frontend loads media from a backend delivery path (`media.deliveryUrl`, e.g. `/api/v1/testimonials/:id/media`), never from a raw storage reference. The backend resolves it through the existing storage abstraction: with S3 it redirects to the provider's short-lived signed URL; with the in-memory development provider (whose `private://` references browsers cannot load) it streams the bytes server-side. `media.access.reference` is still returned for compatibility, and a failed temporary reference no longer fails the whole listing. Media responses set `Cross-Origin-Resource-Policy: cross-origin` (Helmet's `same-origin` default would block cross-origin `<img>`/`<video>` loads whenever the frontend and API are on different origins). Note that in-memory development storage is per-process: restarting the backend drops uploaded objects while their database rows remain, so media 404s until it is re-uploaded.
+- **Media:** stored through the existing private-storage abstraction (`testimonials/` prefix, server-generated keys, MIME + magic-byte validation). The public API returns only display metadata plus the delivery path — never storage keys or credentials. Admin previews of unpublished media use the OPS_ADMIN-protected delivery path (fetched with the bearer token).
+- **Publishing:** a testimonial can only be published after media is uploaded (409 `TESTIMONIAL_MEDIA_REQUIRED` otherwise). No new environment variables are required.
+
+### Authentication refresh lifecycle (Phase 4.6)
+
+- **Token model:** access tokens are short-lived signed JWTs (`JWT_ACCESS_EXPIRES_IN`, e.g. `15m`). Refresh tokens are **opaque 256-bit random values** (base64url, 48 bytes of CSPRNG entropy) — refresh tokens are no longer signed JWTs, so the legacy `JWT_REFRESH_SECRET`/`JWT_REFRESH_EXPIRES_IN` variables are retained only for configuration compatibility (`JWT_REFRESH_EXPIRES_IN` now seeds the database session TTL; `JWT_REFRESH_SECRET` is no longer used to sign anything).
+- **Persistence:** each refresh token maps to a `refresh_sessions` row storing a **SHA-256 hash** of the token value (never the plaintext), the owning user, an expiry, and a `revoked_at` timestamp. Plaintext refresh tokens are never stored at rest.
+- **Endpoint:** `POST /api/v1/auth/refresh` accepts `{ refreshToken }` and returns `{ accessToken, refreshToken }` (no user data). Rate-limited (60 per IP per 15 min). Unknown/malformed/expired/revoked tokens, deleted users, and deactivated accounts all return a uniform sanitized 401 (`INVALID_REFRESH_TOKEN`) with no implementation details.
+- **Rotation:** refresh is one-time. The old session row is atomically revoked and the replacement session created inside one transaction (`updateMany` claim with `revokedAt: null` guard), so a replayed token always 401s and concurrent requests with the same token can never both succeed.
+- **Role authority:** the refreshed access token is minted from the role **currently stored on the user record**, never a claim carried by the credential — role changes take effect at the next refresh; refresh never bypasses RBAC.
+- **Logout:** `POST /api/v1/auth/logout` revokes the presented refresh session (idempotent; unauthenticated by design so a stale client can always complete cleanup). After logout the old refresh token can never mint a new session; the old access token remains technically valid only until its short expiry — access-token blacklisting is deliberately not implemented.
+- **Frontend behavior:** on a 401 from a stored-session request, the shared API client attempts **exactly one** refresh (single-flight: concurrent 401s share one refresh promise), retries the original request exactly once with the rotated pair, and never refreshes recursively or retries the refresh endpoint itself. If refresh fails, the original 401 propagates, `AUTHENTICATION_INVALIDATED_EVENT` fires, the local session is cleared, and the user is redirected to sign-in.
+- **Storage risk (documented, accepted):** the frontend keeps the access and refresh tokens in `localStorage` (`oncoeasy:auth-session:v1`). This is the pre-existing Phase 1 storage decision; it is exposed to any successful XSS attack. Migrating to HttpOnly-cookie sessions is a larger architectural change intentionally deferred beyond this phase.
+
+### Observability, correlation, and audit trail (Phase 4.7)
+
+- **Request correlation:** every request receives an `X-Request-Id` (server-generated UUID, or an incoming header honored only when it is a short opaque `[A-Za-z0-9._-]` token — emails/phones/JWTs are rejected and replaced). The ID is echoed on every response (CORS-exposed), included in every safe error contract, attached to structured log lines, and persisted on audit events.
+- **Logging:** dependency-free single-line JSON logs (`backend/src/observability/logger.ts`) with key-based redaction (password/OTP/token/authorization/cookie/secret/API-key patterns become `[REDACTED]`) and error fields reduced to name/message/category (stack traces only outside production). Volume policy: 5xx at error, 4xx at warn, successful non-GET at debug, GETs unlogged, health probes quiet. `LOG_LEVEL` (`debug`/`info`/`warn`/`error`) defaults to `info` in production.
+- **Error diagnostics:** all boundary errors log once with correlation and a safe category; unexpected errors always return the constant `INTERNAL_SERVER_ERROR` message — never stack traces, database, or provider internals.
+- **Audit trail:** append-only `audit_events` table (never exposed through any write/update/delete path; read API is `OPS_ADMIN`-only via `GET /api/v1/admin/audit/events` with filters for event type, resource, actor, request ID, and time range). Events are recorded in the service layer (transactionally where the mutation is transactional, best-effort elsewhere) so API/integration callers are audited identically to UI users. Metadata is scrubbed of sensitive keys and holds only operational categories/counts — never credentials, free-text reasons, document names/keys, or patient identifiers beyond internal UUIDs.
+- **Coverage:** login success/failure, OTP requested/verification failures, logout, refresh rotation/rejection/sessions-revoked, prescription submission/verify/reject/query, order creation, payment initiation/verification (including gateway webhook captures), delivery assignment/completion/failure, referral create/status, appointment create/status, lab booking/status/report-upload, PAP create/status, testimonial/trial/story/knowledge admin actions, and product import completion. Events exist only for workflows that exist in the application.
+- **Analytics vs audit:** `analytics_events` (product funnel metrics, patient-visible) and `audit_events` (security/business record, OPS_ADMIN-only) are separate models with separate writers — no shared path, no accidental exposure of audit data through analytics endpoints.
+- **Health:** `GET /health` is a dependency-free liveness probe; `GET /health/ready` runs a cheap `SELECT 1` with a short timeout and reports only `{ process, database }` categories — never URLs, credentials, or configuration contents. No expensive dependency checks run on probe paths.
+- **Integration diagnostics:** WhatsApp/SMS/email, Razorpay, private storage, and the manual Thyrocare DSA lab flow log only channel/operation/outcome categories and provider error codes — never recipients, message bodies, credentials, or provider payloads. No real external API calls are made by diagnostics.
+
+## 10. Deployment safety and manual operational setup (Phase 4.9)
+
+### 10.1 Code readiness (IMPLEMENTED in this repository)
+
+- **Startup database probe:** in production the process validates the
+  environment, probes the database (`SELECT 1`, bounded 60 s grace window), and
+  only then listens; a failed probe logs `database_unreachable_at_startup` and
+  exits `1`. Dev/test skip the probe.
+- **Liveness vs readiness:** `GET /health` is dependency-free; `GET /health/ready`
+  reports `{process, database}` categories only and returns `503` when the
+  database is unreachable — never URLs, credentials, or stack traces.
+- **Graceful shutdown:** `SIGTERM`/`SIGINT` stop accepting new connections, close
+  the HTTP server, disconnect Prisma, and exit `0` (idempotent); a failure during
+  shutdown exits `1`.
+- **Production env guards:** localhost database URLs, wildcard CORS, JWT secrets
+  under 32 characters, `STORAGE_PROVIDER=in-memory`, and every enabled-but-
+  uncredentialed provider are rejected at startup.
+- **Payment gateway selector:** with `PAYMENT_GATEWAY_ENABLED=false` the legacy
+  pending-payment behavior applies; with it enabled the real Razorpay adapter is
+  used. The mock gateway is reachable **only** through the explicit test seam —
+  never via configuration or as a failure fallback.
+- **Notification selectors:** WhatsApp/SMS/email mock providers are selected only
+  when the channel is explicitly disabled; production never silently falls back
+  to a mock on failure.
+- **Private storage:** bucket stays private, keys are server-generated UUIDs,
+  browser access is only through expiring signed URLs, credentials never reach
+  the frontend, and a missing object yields the sanitized `404`
+  `STORAGE_OBJECT_NOT_FOUND`.
+- **Production smoke test:** `npm run smoke:production` (see `deployment.md` §4.4).
+- **Safety documentation:** `recovery-runbook.md` (scenarios A–H) and
+  `database-operations.md` §5.
+
+### 10.2 MANUAL PRODUCTION SETUP REQUIRED (not active, not claimed)
+
+None of the following exist in this repository, and none should be described as
+running. They are operator actions with real accounts:
+
+- managed PostgreSQL instance **with backups/PITR enabled and a confirmed
+  retention window** (the app schedules/export nothing);
+- private S3-compatible bucket **with versioning/replication + an export path**
+  for uploaded-file bytes (a DB backup does not include them);
+- DNS/domain + TLS for the backend and frontend origins, then `CORS_ORIGIN` and
+  `VITE_API_BASE_URL`;
+- Razorpay account/keys and **webhook registration** (`PAYMENT_GATEWAY_WEBHOOK_SECRET`);
+- WhatsApp Business Cloud API, SMS gateway, and email vendor accounts/credentials;
+- monitoring/alerting wired to `/health` and `/health/ready`;
+- secret storage for the platform (all `*_SECRET`/`*_KEY`/`DATABASE_URL` values).
+
+Until these exist, OncoEasy is **code-ready but not deployed**, and no backup,
+monitoring, domain, or provider integration is live.
 
 ## Related behavior (verified, unchanged)
 

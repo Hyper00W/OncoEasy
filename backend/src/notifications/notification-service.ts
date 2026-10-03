@@ -1,7 +1,31 @@
 import { AppError } from "../errors/app-error";
+import { createLogger } from "../observability/logger";
 import { isWhatsAppEnabled, sendWhatsAppText, sendWhatsAppTemplate } from "./whatsapp";
 import { isSmsEnabled, sendSmsText } from "./sms";
 import { isEmailEnabled, sendEmail } from "./email";
+
+const logger = createLogger("integration.notification");
+
+/**
+ * Safe integration diagnostics: the channel, outcome category, and provider
+ * error code only. Recipient identifiers, message bodies, templates, and
+ * provider responses are never logged.
+ */
+function logNotificationOutcome(
+  operation: "whatsapp_send" | "sms_send" | "email_send",
+  outcome: "succeeded" | "failed" | "fallback",
+  detail?: { code?: string; durationMs?: number }
+): void {
+  const fields: Record<string, unknown> = { operation, outcome };
+  if (detail?.code) fields.providerErrorCategory = detail.code;
+  if (typeof detail?.durationMs === "number") fields.durationMs = detail.durationMs;
+
+  if (outcome === "failed") {
+    logger.warn("integration_notification_failed", fields);
+  } else {
+    logger.debug("integration_notification_completed", fields);
+  }
+}
 
 export type NotificationChannelResult = {
   channel: "whatsapp" | "sms" | "email";
@@ -51,11 +75,13 @@ const WHATSAPP_FALLBACK_CODES = new Set(["WHATSAPP_DISABLED", "WHATSAPP_UNREACHA
  */
 export async function sendTransactionalNotification(input: TransactionalNotification): Promise<NotificationChannelResult> {
   if (isWhatsAppEnabled()) {
+    const startedAt = Date.now();
     try {
       const send = input.template
         ? sendWhatsAppTemplate({ to: input.to, template: input.template })
         : sendWhatsAppText({ to: input.to, body: input.text });
       const result = await send;
+      logNotificationOutcome("whatsapp_send", "succeeded", { durationMs: Date.now() - startedAt });
       return { channel: "whatsapp", ...result };
     } catch (error) {
       const fallbackPossible =
@@ -63,6 +89,11 @@ export async function sendTransactionalNotification(input: TransactionalNotifica
         WHATSAPP_FALLBACK_CODES.has(error.code) &&
         input.allowSmsFallback === true &&
         isSmsEnabled();
+
+      logNotificationOutcome("whatsapp_send", fallbackPossible ? "fallback" : "failed", {
+        code: error instanceof AppError ? error.code : undefined,
+        durationMs: Date.now() - startedAt
+      });
 
       if (!fallbackPossible) {
         // Includes non-transient errors (e.g. invalid recipient format):
@@ -77,12 +108,18 @@ export async function sendTransactionalNotification(input: TransactionalNotifica
   }
 
   // Single SMS fallback attempt (opt-in only, one try, no retries).
+  const smsStartedAt = Date.now();
   try {
     const result = await sendSmsText({ to: input.to, text: input.text });
+    logNotificationOutcome("sms_send", "succeeded", { durationMs: Date.now() - smsStartedAt });
     return { channel: "sms", ...result };
-  } catch (_error) {
+  } catch (error) {
     // Both channels failed. Individual channel error details are safe but
     // are combined into one constant error to keep the failure surface stable.
+    logNotificationOutcome("sms_send", "failed", {
+      code: error instanceof AppError ? error.code : undefined,
+      durationMs: Date.now() - smsStartedAt
+    });
     throw new AppError(502, "NOTIFICATION_FAILED", "Notification could not be delivered on any channel");
   }
 }
@@ -96,8 +133,18 @@ export async function sendEmailNotification(input: EmailNotificationContent): Pr
   if (!input.email || !input.subject || input.text === undefined) {
     throw new AppError(400, "NOTIFICATION_CONTENT_INVALID", "Email notifications require recipient, subject, and text");
   }
-  const result = await sendEmail({ to: input.email, subject: input.subject, text: input.text, html: input.html });
-  return { channel: "email", ...result };
+  const emailStartedAt = Date.now();
+  try {
+    const result = await sendEmail({ to: input.email, subject: input.subject, text: input.text, html: input.html });
+    logNotificationOutcome("email_send", "succeeded", { durationMs: Date.now() - emailStartedAt });
+    return { channel: "email", ...result };
+  } catch (error) {
+    logNotificationOutcome("email_send", "failed", {
+      code: error instanceof AppError ? error.code : undefined,
+      durationMs: Date.now() - emailStartedAt
+    });
+    throw error;
+  }
 }
 
 export type MultiChannelNotificationRequest = TransactionalNotification & EmailNotificationContent & {

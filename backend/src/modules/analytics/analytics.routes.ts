@@ -8,6 +8,6 @@ import { events, overview } from "./analytics.controller";
 import { analyticsDateRangeSchema, analyticsEventsQuerySchema } from "./analytics.schemas";
 
 export const analyticsRouter = Router();
-analyticsRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+analyticsRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 analyticsRouter.get("/overview", validateRequest({ query: analyticsDateRangeSchema }), overview);
 analyticsRouter.get("/events", validateRequest({ query: analyticsEventsQuerySchema }), events);

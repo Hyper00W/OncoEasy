@@ -6,7 +6,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-import type { PrivateStorageProvider, PrivateStorageUpload } from "./private-storage";
+import { AppError } from "../errors/app-error";
+import type { PrivateStorageObject, PrivateStorageProvider, PrivateStorageUpload } from "./private-storage";
 
 export type S3PrivateStorageOptions = {
   bucket: string;
@@ -54,6 +55,24 @@ export class S3PrivateStorage implements PrivateStorageProvider {
         Key: key
       })
     );
+  }
+
+  async read(key: string): Promise<PrivateStorageObject> {
+    try {
+      const result = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: key
+        })
+      );
+      const body = result.Body ? Buffer.from(await result.Body.transformToByteArray()) : Buffer.alloc(0);
+      return { body, contentType: result.ContentType ?? "application/octet-stream" };
+    } catch (error) {
+      if ((error as { name?: string }).name === "NoSuchKey" || (error as { name?: string }).name === "NotFound") {
+        throw new AppError(404, "STORAGE_OBJECT_NOT_FOUND", "Private object was not found");
+      }
+      throw error;
+    }
   }
 
   async createTemporaryAccess(

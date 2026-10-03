@@ -5,6 +5,7 @@ import { AppError } from "../../errors/app-error";
 import { toKnowledgeArticleResponse, toKnowledgeArticleSummary } from "./knowledge.mapper";
 import type { CreateKnowledgeArticleInput, KnowledgeListQuery, UpdateKnowledgeArticleInput } from "./knowledge.schemas";
 import { recordAnalyticsEvent } from "../analytics/analytics.events";
+import { recordAuditEvent } from "../../observability/audit";
 
 const publicSelect = {
   id: true,
@@ -78,6 +79,13 @@ export async function createArticle(adminId: string, input: CreateKnowledgeArtic
       },
       include: adminInclude
     });
+    await recordAuditEvent(prisma, {
+      eventType: "KNOWLEDGE_ARTICLE_CREATED",
+      actorUserId: adminId,
+      actorRole: "OPS_ADMIN",
+      resourceType: "KNOWLEDGE_ARTICLE",
+      resourceId: article.id
+    });
     return toKnowledgeArticleResponse(article, true);
   } catch (error) {
     throw mapArticleWriteError(error);
@@ -106,6 +114,13 @@ export async function setArticlePublished(adminId: string, articleId: string, is
       where: { id: articleId },
       data: { isPublished, publishedAt: isPublished ? new Date() : null, updatedById: adminId },
       include: adminInclude
+    });
+    await recordAuditEvent(prisma, {
+      eventType: isPublished ? "KNOWLEDGE_ARTICLE_PUBLISHED" : "KNOWLEDGE_ARTICLE_UPDATED",
+      actorUserId: adminId,
+      actorRole: "OPS_ADMIN",
+      resourceType: "KNOWLEDGE_ARTICLE",
+      resourceId: articleId
     });
     return toKnowledgeArticleResponse(article, true);
   } catch (error) {

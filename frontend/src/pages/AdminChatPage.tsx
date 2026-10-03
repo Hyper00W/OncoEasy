@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AdminPortalShell } from "../admin/AdminPortalShell";
 import { Alert, Button, Field, LoadingState, Panel } from "../components/ui";
 import {
   chatStatuses,
@@ -23,7 +24,7 @@ type AdminChatQuery = {
 const pageSize = 10;
 
 export function AdminChatPage({ navigate }: { navigate: Navigate }) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize, total: 0, totalPages: 1 });
   const [selected, setSelected] = useState<ChatSession | null>(null);
@@ -35,6 +36,8 @@ export function AdminChatPage({ navigate }: { navigate: Navigate }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let stale = false;
+
     listAdminChatSessions({
       page: query.page,
       pageSize,
@@ -42,18 +45,22 @@ export function AdminChatPage({ navigate }: { navigate: Navigate }) {
       escalated: query.escalated === "ALL" ? undefined : query.escalated === "ESCALATED"
     })
       .then((response) => {
+        if (stale) return; // a newer query superseded this response
         setSessions(response.items);
         setPagination(response.pagination);
         setError(null);
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
-  }, [query]);
+      .catch((requestError: unknown) => {
+        if (!stale) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!stale) setLoading(false);
+      });
 
-  function leave(): void {
-    signOut();
-    navigate("/");
-  }
+    return () => {
+      stale = true;
+    };
+  }, [query]);
 
   function runQuery(next: AdminChatQuery): void {
     setError(null);
@@ -81,16 +88,11 @@ export function AdminChatPage({ navigate }: { navigate: Navigate }) {
   if (!user) return null;
 
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Operations admin</p>
-          <h1>Chat escalations</h1>
-          <p className="intro">Review conversational-router sessions and follow up on requests flagged for human support. This view is read-only.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
-
+    <AdminPortalShell
+      navigate={navigate}
+      activePath="/admin/chat"
+      title="Chat escalations"
+    >
       {error ? <Alert>{error}</Alert> : null}
 
       <section className="consultation-grid">
@@ -174,7 +176,7 @@ export function AdminChatPage({ navigate }: { navigate: Navigate }) {
           </Panel>
         ) : null}
       </section>
-    </main>
+    </AdminPortalShell>
   );
 }
 

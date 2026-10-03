@@ -65,7 +65,7 @@ papRouter.get("/applications/:applicationId", validateRequest({ params: papAppli
 papRouter.post("/applications/:applicationId/documents", validateRequest({ params: papApplicationParamsSchema }), parseDocumentUpload, uploadDocument);
 
 export const adminPapRouter = Router();
-adminPapRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminPapRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminPapRouter.get("/applications", validateRequest({ query: papApplicationListQuerySchema }), listAdmin);
 adminPapRouter.get("/applications/:applicationId", validateRequest({ params: papApplicationParamsSchema }), getAdmin);
 adminPapRouter.patch("/applications/:applicationId/status", validateRequest({ params: papApplicationParamsSchema, body: updatePapStatusSchema }), updateStatus);

@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
+import { PatientPageShell } from "../shell/PatientPageShell";
+import { Alert, BackLink, Button, EmptyState, Field, Input, LoadingState, PageHero, Panel } from "../components/ui";
+import { BookIcon } from "../components/icons";
 import {
   getPublishedArticle,
   knowledgeCategories,
@@ -20,7 +22,7 @@ type KnowledgeQuery = {
   search: string;
 };
 
-const pageSize = 10;
+const pageSize = 9;
 
 export function PatientKnowledgePage({ navigate }: { navigate: Navigate }) {
   const { user, signOut } = useAuth();
@@ -34,6 +36,8 @@ export function PatientKnowledgePage({ navigate }: { navigate: Navigate }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let stale = false;
+
     listPublishedArticles({
       page: query.page,
       pageSize,
@@ -41,17 +45,27 @@ export function PatientKnowledgePage({ navigate }: { navigate: Navigate }) {
       search: query.search || undefined
     })
       .then((response) => {
+        if (stale) return; // a newer query superseded this response
         setArticles(response.items);
         setPagination(response.pagination);
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
+      .catch((requestError: unknown) => {
+        if (!stale) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!stale) setLoading(false);
+      });
+
+    return () => {
+      stale = true;
+    };
   }, [query]);
 
   function leave(): void {
     signOut();
     navigate("/");
   }
+  void leave;
 
   function runQuery(next: KnowledgeQuery): void {
     setArticle(null);
@@ -70,97 +84,158 @@ export function PatientKnowledgePage({ navigate }: { navigate: Navigate }) {
     runQuery({ page: 1, category: "", search: "" });
   }
 
+  const detailRequestToken = useRef(0);
+
   function openArticle(slug: string): void {
+    const requestToken = ++detailRequestToken.current;
     setDetailLoading(true);
     setError(null);
     getPublishedArticle(slug)
-      .then(setArticle)
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setDetailLoading(false));
+      .then((article) => {
+        if (detailRequestToken.current !== requestToken) return; // a newer article was opened
+        setArticle(article);
+      })
+      .catch((requestError: unknown) => {
+        if (detailRequestToken.current === requestToken) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (detailRequestToken.current === requestToken) setDetailLoading(false);
+      });
   }
 
   if (!user) return null;
 
+  const hasFilters = Boolean(query.search || query.category);
+
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Patient education</p>
-          <h1>Knowledge bank</h1>
-          <p className="intro">Browse published articles about diagnosis, treatment, research, and general care.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
+    <PatientPageShell
+      navigate={navigate}
+      activePath="/patient/knowledge"
+      className="knowledge-page"
+      backSlot={<BackLink navigate={navigate} fallback="/patient" label="Back to dashboard" />}
+    >
+      <PageHero
+        tone="lavender"
+        eyebrow="Clinical Oncology Education"
+        title="Knowledge bank &amp; guides,"
+        highlight="simplified &amp; clear."
+        description="Explore verified clinical guides, treatment explanations, side effect management, and research articles reviewed by our oncology team."
+        image="/assets/pharmacy/pharmacy-store.avif"
+        imageAlt="Oncology research and literature"
+        badge={
+          <>
+            <BookIcon size={16} /> Clinical Knowledge Library
+          </>
+        }
+        crumbs={[
+          { label: "Dashboard", href: "/patient" },
+          { label: "Knowledge" }
+        ]}
+      />
 
       {error ? <Alert>{error}</Alert> : null}
 
-      <section className="consultation-grid">
-        <Panel>
-          <h2>Search and filter</h2>
+      <div className="knowledge-tabs-bar" role="tablist" aria-label="Article categories">
+        <button
+          type="button"
+          className={`knowledge-tab-pill${!query.category ? " is-active" : ""}`}
+          onClick={() => runQuery({ page: 1, category: "", search: query.search })}
+        >
+          All topics
+        </button>
+        {knowledgeCategories.map((value) => (
+          <button
+            key={value}
+            type="button"
+            className={`knowledge-tab-pill${query.category === value ? " is-active" : ""}`}
+            onClick={() => runQuery({ page: 1, category: query.category === value ? "" : value, search: query.search })}
+          >
+            {formatCategory(value)}
+          </button>
+        ))}
+      </div>
+
+      <section className="knowledge-layout">
+        <Panel className="panel-fluid knowledge-filter">
+          <h2>Search library</h2>
           <form className="form-stack" onSubmit={applySearch}>
-            <Field label="Search articles" htmlFor="knowledge-search">
-              <Input id="knowledge-search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search titles and content" />
-            </Field>
-            <Field label="Category" htmlFor="knowledge-category">
-              <select className="input" id="knowledge-category" value={query.category} onChange={(event) => runQuery({ page: 1, category: event.target.value as KnowledgeCategory | "", search: query.search })}>
-                <option value="">All categories</option>
-                {knowledgeCategories.map((value) => <option key={value} value={value}>{formatCategory(value)}</option>)}
-              </select>
+            <Field label="Search topics and drugs" htmlFor="knowledge-search">
+              <Input id="knowledge-search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="e.g. Immunotherapy, nausea" />
             </Field>
             <div className="button-row">
               <Button type="submit">Search</Button>
-              <Button className="button-secondary" type="button" onClick={clearFilters}>Clear</Button>
+              {hasFilters ? (
+                <Button className="button-secondary" type="button" onClick={clearFilters}>Clear</Button>
+              ) : null}
             </div>
           </form>
         </Panel>
 
-        <Panel>
-          <h2>Published articles</h2>
+        <div className="knowledge-main">
+          <div className="knowledge-section-head">
+            <h2>Published articles</h2>
+            <span className="field-hint">{pagination.total} article(s)</span>
+          </div>
+
           {loading ? (
             <LoadingState label="Loading articles..." />
           ) : articles.length === 0 ? (
-            <p className="empty-state">No published articles match your search.</p>
+            <Panel className="panel-fluid">
+              <EmptyState
+                icon={<BookIcon size={22} />}
+                title={hasFilters ? "No articles match your search" : "No articles published yet"}
+                hint={hasFilters ? "Try a different search term or category." : "Educational articles will appear here as our care team publishes them."}
+              />
+            </Panel>
           ) : (
-            <div className="stack-list">
-              {articles.map((item) => (
-                <button className="list-row list-row-button" type="button" key={item.articleId} onClick={() => openArticle(item.slug)}>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span className="muted">{formatCategory(item.category)} • {item.publishedAt ? formatDate(item.publishedAt) : "Published"}</span>
-                    <span className="muted">{item.summary}</span>
-                  </div>
-                  <span className="status">Read</span>
+            <div className="article-grid">
+              {articles.map((item, index) => (
+                <button
+                  className={`article-card${index === 0 && !hasFilters ? " article-card-featured" : ""}`}
+                  type="button"
+                  key={item.articleId}
+                  onClick={() => openArticle(item.slug)}
+                >
+                  {index === 0 && !hasFilters ? <span className="article-featured-flag">Featured</span> : null}
+                  <span className="article-card-icon" aria-hidden="true">
+                    <BookIcon size={18} />
+                  </span>
+                  <span className="article-card-category">{formatCategory(item.category)}</span>
+                  <strong className="article-card-title">{item.title}</strong>
+                  {item.summary ? <span className="article-card-summary">{item.summary}</span> : null}
+                  <span className="article-card-date">{item.publishedAt ? formatDate(item.publishedAt) : "Published"}</span>
                 </button>
               ))}
             </div>
           )}
-          <div className="button-row">
+
+          <div className="button-row knowledge-pagination">
             <Button className="button-secondary" type="button" disabled={loading || pagination.page <= 1} onClick={() => runQuery({ ...query, page: pagination.page - 1 })}>Previous</Button>
-            <span className="field-hint">Page {pagination.page} of {Math.max(pagination.totalPages, 1)} • {pagination.total} article(s)</span>
+            <span className="field-hint">Page {pagination.page} of {Math.max(pagination.totalPages, 1)}</span>
             <Button className="button-secondary" type="button" disabled={loading || pagination.page >= pagination.totalPages} onClick={() => runQuery({ ...query, page: pagination.page + 1 })}>Next</Button>
           </div>
-        </Panel>
 
-        {detailLoading ? <LoadingState label="Loading article..." /> : null}
+          {detailLoading ? <LoadingState label="Loading article..." /> : null}
 
-        {article ? (
-          <Panel>
-            <div className="detail-header">
-              <div>
-                <p className="eyebrow">{formatCategory(article.category)}</p>
-                <h2>{article.title}</h2>
+          {article ? (
+            <Panel className="panel-fluid article-reader">
+              <div className="detail-header">
+                <div>
+                  <p className="eyebrow">{formatCategory(article.category)}</p>
+                  <h2>{article.title}</h2>
+                </div>
+                <span className="status">{article.publishedAt ? formatDate(article.publishedAt) : "Published"}</span>
               </div>
-              <span className="status">{article.publishedAt ? formatDate(article.publishedAt) : "Published"}</span>
-            </div>
-            <p className="muted">{article.summary}</p>
-            <p>{article.content}</p>
-            <div className="button-row">
-              <Button className="button-secondary" type="button" onClick={() => setArticle(null)}>Close article</Button>
-            </div>
-          </Panel>
-        ) : null}
+              <p className="muted">{article.summary}</p>
+              <p>{article.content}</p>
+              <div className="button-row">
+                <Button className="button-secondary" type="button" onClick={() => setArticle(null)}>Close article</Button>
+              </div>
+            </Panel>
+          ) : null}
+        </div>
       </section>
-    </main>
+    </PatientPageShell>
   );
 }
 

@@ -8,6 +8,7 @@ import { normalizePapDocumentName, validatePapDocumentFile } from "./pap.storage
 import { toPapApplicationResponse, toPapDocumentAccessResponse, toPapProgramResponse } from "./pap.mapper";
 import type { CreatePapApplicationInput, PapApplicationListQuery, UpdatePapStatusInput } from "./pap.schemas";
 import { recordAnalyticsEvent } from "../analytics/analytics.events";
+import { recordAuditEvent } from "../../observability/audit";
 
 const programSelect = {
   id: true,
@@ -49,6 +50,16 @@ export async function createPatientApplication(patientId: string, input: CreateP
       include: applicationInclude
     });
     await recordAnalyticsEvent(transaction, "PAP_SUBMITTED", { userId: patientId, entityType: "PAP_APPLICATION", entityId: created.id });
+    // Business-action audit: applicationData (medical/financial content) is
+    // never copied into audit metadata.
+    await recordAuditEvent(transaction, {
+      eventType: "PAP_APPLICATION_CREATED",
+      actorUserId: patientId,
+      actorRole: "PATIENT",
+      resourceType: "PAP_APPLICATION",
+      resourceId: created.id,
+      metadata: { papProgramId: program.id }
+    });
     return created;
   });
   return toPapApplicationResponse(application);
@@ -109,12 +120,28 @@ export async function updateApplicationStatus(applicationId: string, reviewerId:
   assertStatusTransition(application.status, input.status);
 
   const updated = await prisma.$transaction(async (transaction) => {
-    const result = await transaction.pAPApplication.update({
+    // Conditional transition: only a row still in the expected source status is
+    // updated, so two concurrent reviewers can never both move the application
+    // (e.g. one to APPROVED while the other moves it to REJECTED).
+    const transitioned = await transaction.pAPApplication.updateMany({
+      where: { id: applicationId, status: application.status },
+      data: { status: input.status, reviewReason: input.reason || null, reviewNotes: input.reviewNotes || null, reviewedBy: reviewerId, reviewedAt: new Date() }
+    });
+    if (transitioned.count === 0) {
+      throw new AppError(409, "PAP_APPLICATION_STATE_CONFLICT", "PAP application transition is not valid");
+    }
+    const result = await transaction.pAPApplication.findUniqueOrThrow({
       where: { id: applicationId },
-      data: { status: input.status, reviewReason: input.reason || null, reviewNotes: input.reviewNotes || null, reviewedBy: reviewerId, reviewedAt: new Date() },
       include: applicationInclude
     });
     await recordAnalyticsEvent(transaction, "PAP_STATUS_CHANGED", { userId: reviewerId, entityType: "PAP_APPLICATION", entityId: applicationId, metadata: { status: input.status } });
+    await recordAuditEvent(transaction, {
+      eventType: "PAP_STATUS_CHANGED",
+      actorUserId: reviewerId,
+      resourceType: "PAP_APPLICATION",
+      resourceId: applicationId,
+      metadata: { from: application.status, to: input.status }
+    });
     if (input.status === PapApplicationStatus.COMPLETED) await recordAnalyticsEvent(transaction, "PAP_COMPLETED", { userId: result.patientId, entityType: "PAP_APPLICATION", entityId: applicationId });
     return result;
   });

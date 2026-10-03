@@ -12,8 +12,15 @@ const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "ops-admin@oncoeasy.local";
 const adminPassword =
   process.env.SEED_ADMIN_PASSWORD ?? "dev-only-change-me";
 
+// Phase 6.11: development-only OWNER account. Never replaces the OPS_ADMIN
+// seed; production owners must be provisioned through a controlled process
+// (invitation/setup), never through this seed.
+const ownerEmail = process.env.SEED_OWNER_EMAIL ?? "owner@oncoeasy.local";
+const ownerPassword = process.env.SEED_OWNER_PASSWORD ?? "dev-only-owner-change-me";
+
 async function main(): Promise<void> {
   const passwordHash = await hashPassword(adminPassword);
+  const ownerPasswordHash = await hashPassword(ownerPassword);
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
@@ -29,6 +36,25 @@ async function main(): Promise<void> {
       email: adminEmail,
       passwordHash,
       role: UserRole.OPS_ADMIN,
+      isActive: true,
+      isVerified: true
+    }
+  });
+
+  await prisma.user.upsert({
+    where: { email: ownerEmail },
+    update: {
+      fullName: "OncoEasy Owner",
+      passwordHash: ownerPasswordHash,
+      role: UserRole.OWNER,
+      isActive: true,
+      isVerified: true
+    },
+    create: {
+      fullName: "OncoEasy Owner",
+      email: ownerEmail,
+      passwordHash: ownerPasswordHash,
+      role: UserRole.OWNER,
       isActive: true,
       isVerified: true
     }

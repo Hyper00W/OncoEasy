@@ -1,0 +1,50 @@
+# Dependencies / build output
+node_modules/
+dist/
+dist-ssr/
+build/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment files (never commit real configuration/secrets)
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Local archives / exported copies (not source of truth)
+*.rar
+*.zip
+*.7z
+*.tar
+*.tar.gz
+
+# Generated QA artifacts (screenshots + captured reports)
+frontend/qa-shots/
+qa/*-current/
+
+# Local agent / tooling state
+.freebuff/
+.agents/skills/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

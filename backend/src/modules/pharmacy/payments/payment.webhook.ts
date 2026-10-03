@@ -7,7 +7,11 @@ import { prisma } from "../../../database/prisma";
 import { AppError } from "../../../errors/app-error";
 import { getPaymentGateway, isPaymentGatewayEnabled } from "../../../payments/payment-gateway";
 import { RazorpayPaymentGateway } from "../../../payments/razorpay-gateway";
+import { recordAuditEventSafe } from "../../../observability/audit";
+import { createLogger } from "../../../observability/logger";
 import { toMinorUnits } from "./payment.service";
+
+const logger = createLogger("payments.webhook");
 
 type WebhookPaymentEntity = {
   id?: string;
@@ -111,6 +115,17 @@ async function processWebhookEvent(payload: WebhookPayload): Promise<boolean> {
         data: { status: OrderStatus.PAID }
       })
     ]);
+
+    // Security-relevant mutation: money received. The webhook bypasses the
+    // user-facing verify path, so the capture is audited from the backend
+    // with no actor (system-driven). Metadata carries only safe categories —
+    // never the gateway payload.
+    await recordAuditEventSafe({
+      eventType: "PAYMENT_VERIFIED",
+      resourceType: "PAYMENT",
+      resourceId: payment.id,
+      metadata: { orderId: payment.orderId, status: "PAID", source: "WEBHOOK" }
+    });
     return true;
   }
 
@@ -122,6 +137,13 @@ async function processWebhookEvent(payload: WebhookPayload): Promise<boolean> {
       failureCode: "GATEWAY_PAYMENT_FAILED",
       failureMessage: "The gateway reported the payment as failed"
     }
+  });
+
+  // Gateway-reported failures are diagnostics (no audit enum value exists for
+  // them by design); the safe log carries the category only.
+  logger.warn("payment_gateway_reported_failure", {
+    orderId: payment.orderId,
+    outcome: "GATEWAY_PAYMENT_FAILED"
   });
   return true;
 }

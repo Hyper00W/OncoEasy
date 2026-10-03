@@ -13,7 +13,7 @@ knowledgeRouter.get("/articles", validateRequest({ query: knowledgeListQuerySche
 knowledgeRouter.get("/articles/:slug", validateRequest({ params: knowledgeSlugParamsSchema }), getPublished);
 
 export const adminKnowledgeRouter = Router();
-adminKnowledgeRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminKnowledgeRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminKnowledgeRouter.get("/articles", validateRequest({ query: knowledgeListQuerySchema }), listAdmin);
 adminKnowledgeRouter.post("/articles", validateRequest({ body: createKnowledgeArticleSchema }), create);
 adminKnowledgeRouter.patch("/articles/:articleId", validateRequest({ params: knowledgeIdParamsSchema, body: updateKnowledgeArticleSchema }), update);

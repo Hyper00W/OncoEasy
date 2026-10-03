@@ -15,37 +15,45 @@ export type DashboardQuickLink = {
 export type DashboardAppointment = {
   appointmentId: string;
   scheduledAt: string;
+  consultationType: "IN_CLINIC" | "PHONE";
   status: string;
-  doctor?: { doctorId: string; fullName: string };
+  doctorName: string | null;
 } | null;
 
 export type DashboardOrder = {
-  id: string;
+  orderId: string;
   status: string;
-  totalAmount?: string;
-} & Record<string, unknown>;
+  totalAmount: string;
+  currency: string;
+  itemCount: number;
+};
 
 export type DashboardReferral = {
   referralId: string;
   status: string;
-} & Record<string, unknown>;
+  createdAt: string;
+} | null;
 
 export type DashboardLabTest = {
-  bookingId?: string;
-  testId?: string;
-  name?: string;
-  status?: string;
-} & Record<string, unknown>;
+  bookingId: string;
+  testId: string;
+  name: string;
+  status: string;
+  preferredDate: string;
+};
 
 export type DashboardPapStatus = {
+  applicationId: string;
   status: string;
+  programName: string;
+  updatedAt: string;
 } | null;
 
 export type PatientDashboard = {
   nextStep: DashboardNextStep | null;
   upcomingAppointment: DashboardAppointment;
   activeOrders: DashboardOrder[];
-  referral: DashboardReferral | null;
+  referral: DashboardReferral;
   labTests: DashboardLabTest[];
   papStatus: DashboardPapStatus;
   quickLinks: DashboardQuickLink[];

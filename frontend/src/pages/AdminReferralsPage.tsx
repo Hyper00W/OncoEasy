@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -9,156 +9,202 @@ import {
   type AdminReferral,
   type ReferralStatus
 } from "../admin/admin-api";
-import { Alert, Button, Field, LoadingState, Panel } from "../components/ui";
+import { AdminPortalShell } from "../admin/AdminPortalShell";
+import { AdminDetailPanel } from "../components/admin/AdminDetailPanel";
+import { AdminFilterBar, AdminSelectFilter } from "../components/admin/AdminFilterBar";
+import { AdminPagination, AdminTable, type AdminColumn } from "../components/admin/AdminTable";
+import { StatusChip } from "../components/StatusChip";
+import { Button } from "../components/ui";
+import type { Navigate } from "../components/navigation-types";
+import { formatDateTime, formatStatusLabel } from "../components/status-utils";
 
-type Navigate = (path: string) => void;
 
 const pageSize = 10;
 
+/**
+ * Referral monitoring (Phase 6.5). Read-only over the existing admin
+ * referral endpoints: server-side status filter, pagination, and a detail
+ * panel exposing the real status timeline (created → viewed → ordered →
+ * fulfilled) with the linked pharmacy order when present.
+ */
 export function AdminReferralsPage({ navigate }: { navigate: Navigate }) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [referrals, setReferrals] = useState<AdminReferral[]>([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize, total: 0, totalPages: 1 });
   const [selected, setSelected] = useState<AdminReferral | null>(null);
-  const [statusFilter, setStatusFilter] = useState<ReferralStatus | "">("");
-  const [query, setQuery] = useState<{ page: number; status: ReferralStatus | "" }>({ page: 1, status: "" });
+  const [status, setStatus] = useState("");
+  const [query, setQuery] = useState<{ page: number; status: string }>({ page: 1, status: "" });
   const [loading, setLoading] = useState(true);
-  const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestTokenRef = useRef(0);
 
   useEffect(() => {
-    listAdminReferrals({ page: query.page, pageSize, status: query.status || undefined })
+    const requestToken = ++requestTokenRef.current;
+    listAdminReferrals({ page: query.page, pageSize, status: (query.status || undefined) as ReferralStatus | undefined })
       .then((response) => {
+        if (requestTokenRef.current !== requestToken) return;
         setReferrals(response.items);
         setPagination(response.pagination);
         setError(null);
+        setLoading(false);
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
+      .catch((requestError: unknown) => {
+        if (requestTokenRef.current !== requestToken) return;
+        setError(describeError(requestError, "The referrals queue could not be loaded."));
+        setLoading(false);
+      });
   }, [query]);
 
-  function leave(): void {
-    signOut();
-    navigate("/");
-  }
-
-  function applyFilters(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    setError(null);
-    setLoading(true);
-    setQuery({ page: 1, status: statusFilter });
-  }
-
   function openReferral(referralId: string): void {
-    setOpening(true);
     setError(null);
     getAdminReferral(referralId)
       .then((referral) => {
         setSelected(referral);
         setReferrals((current) => current.map((item) => (item.referralId === referral.referralId ? referral : item)));
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setOpening(false));
+      .catch((requestError: unknown) => setError(describeError(requestError, "That referral could not be opened.")));
   }
+
+  const columns: AdminColumn<AdminReferral>[] = [
+    {
+      header: "Doctor",
+      label: "Doctor",
+      cell: (referral) => referral.doctor?.fullName ?? <span className="muted">—</span>
+    },
+    {
+      header: "Patient",
+      label: "Patient",
+      cell: (referral) => referral.patient?.fullName ?? <span className="muted">—</span>
+    },
+    {
+      header: "Items",
+      label: "Items",
+      cell: (referral) => String(referral.items.length)
+    },
+    {
+      header: "Created",
+      label: "Created",
+      cell: (referral) => formatDateTime(referral.createdAt)
+    },
+    {
+      header: "Order",
+      label: "Order",
+      cell: (referral) =>
+        referral.order ? (
+          <span className="mono">{referral.order.id.slice(0, 8)}</span>
+        ) : (
+          <span className="muted">Not ordered</span>
+        )
+    },
+    {
+      header: "Status",
+      label: "Status",
+      cell: (referral) => <StatusChip status={referral.status} />
+    },
+    {
+      header: "Actions",
+      hideHeader: true,
+      label: "Actions",
+      cell: (referral) => (
+        <Button className="button-link" type="button" onClick={() => openReferral(referral.referralId)}>
+          Details
+        </Button>
+      )
+    }
+  ];
 
   if (!user) return null;
 
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Operations admin</p>
-          <h1>Referral operations</h1>
-          <p className="intro">Track doctor referrals through viewing, ordering, and fulfillment.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
-
-      {error ? <Alert>{error}</Alert> : null}
-
-      <section className="consultation-grid">
-        <Panel>
-          <h2>Referrals</h2>
-          <form className="form-stack" onSubmit={applyFilters}>
-            <Field label="Status" htmlFor="referrals-admin-status">
-              <select className="input" id="referrals-admin-status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ReferralStatus | "")}>
-                <option value="">All statuses</option>
-                {referralStatuses.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
-              </select>
-            </Field>
-            <Button type="submit">Apply filters</Button>
-          </form>
-
-          {loading ? (
-            <LoadingState label="Loading referrals..." />
-          ) : referrals.length === 0 ? (
-            <p className="empty-state">No referrals match the current filters.</p>
-          ) : (
-            <div className="stack-list">
-              {referrals.map((referral) => (
-                <button className="list-row list-row-button" type="button" key={referral.referralId} onClick={() => openReferral(referral.referralId)}>
-                  <div>
-                    <strong>{referral.patient?.fullName ?? "Patient"} → {referral.items.length} item(s)</strong>
-                    <span className="muted">{referral.doctor?.fullName ?? "Doctor"} • {formatDate(referral.createdAt)}</span>
-                  </div>
-                  <span className="status">{formatLabel(referral.status)}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="button-row">
-            <Button className="button-secondary" type="button" disabled={loading || pagination.page <= 1} onClick={() => setQuery({ ...query, page: pagination.page - 1 })}>Previous</Button>
-            <span className="field-hint">Page {pagination.page} of {Math.max(pagination.totalPages, 1)} • {pagination.total} referral(s)</span>
-            <Button className="button-secondary" type="button" disabled={loading || pagination.page >= pagination.totalPages} onClick={() => setQuery({ ...query, page: pagination.page + 1 })}>Next</Button>
+    <AdminPortalShell navigate={navigate} activePath="/admin/referrals" title="Referrals">
+      <div className="admin-sections">
+        <section className="panel admin-queue-panel" aria-label="Referral queue">
+          <div className="queue-head">
+            <h2>All referrals</h2>
+            <Button className="button-link" type="button" onClick={() => setQuery({ ...query })}>
+              Refresh
+            </Button>
           </div>
-        </Panel>
+          <AdminFilterBar
+            onApply={(event) => {
+              event.preventDefault();
+              setQuery({ page: 1, status });
+            }}
+            onClear={() => {
+              setStatus("");
+              setQuery({ page: 1, status: "" });
+            }}
+          >
+            <AdminSelectFilter
+              id="admin-referrals-status"
+              label="Referral status"
+              value={status}
+              options={referralStatuses}
+              allLabel="All statuses"
+              onChange={setStatus}
+            />
+          </AdminFilterBar>
 
-        {opening ? <LoadingState label="Loading referral..." /> : null}
+          <AdminTable
+            columns={columns}
+            rows={referrals}
+            getKey={(referral) => referral.referralId}
+            loading={loading}
+            loadingLabel="Loading referrals..."
+            emptyTitle="No referrals match this filter"
+            emptyHint={query.status ? `No referrals are currently ${formatStatusLabel(query.status).toLowerCase()}.` : "Referrals appear here as doctors refer medicines to patients."}
+            error={error}
+            onRetry={() => setQuery({ ...query })}
+          />
+
+          <AdminPagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            singular="referral"
+            plural="referrals"
+            disabled={loading}
+            onPrevious={() => setQuery({ ...query, page: pagination.page - 1 })}
+            onNext={() => setQuery({ ...query, page: pagination.page + 1 })}
+          />
+        </section>
 
         {selected ? (
-          <Panel>
-            <div className="detail-header">
-              <div>
-                <p className="eyebrow">{formatLabel(selected.status)}</p>
-                <h2>Referral {selected.referralId.slice(0, 8)}</h2>
-              </div>
-              <Button className="button-secondary" type="button" onClick={() => setSelected(null)}>Close</Button>
-            </div>
-            <div className="stack-list">
-              <p className="list-row"><strong>Doctor</strong><span>{selected.doctor?.fullName ?? "—"}</span></p>
-              <p className="list-row"><strong>Patient</strong><span>{selected.patient?.fullName ?? "—"}</span></p>
-              <p className="list-row"><strong>Created</strong><span>{formatDate(selected.createdAt)}</span></p>
-              <p className="list-row"><strong>Viewed</strong><span>{selected.viewedAt ? formatDate(selected.viewedAt) : "Not yet viewed"}</span></p>
-              <p className="list-row"><strong>Ordered</strong><span>{selected.orderedAt ? formatDate(selected.orderedAt) : "Not ordered"}</span></p>
-              <p className="list-row"><strong>Fulfilled</strong><span>{selected.fulfilledAt ? formatDate(selected.fulfilledAt) : "Not fulfilled"}</span></p>
-              {selected.order ? <p className="list-row"><strong>Linked order</strong><span>{selected.order.id.slice(0, 8)} • {formatLabel(selected.order.status)}</span></p> : null}
-            </div>
+          <AdminDetailPanel
+            eyebrow={formatStatusLabel(selected.status)}
+            title={`Referral ${selected.referralId.slice(0, 8)}`}
+            meta={`${selected.doctor?.fullName ?? "Doctor"} → ${selected.patient?.fullName ?? "Patient"}`}
+            onClose={() => setSelected(null)}
+            rows={[
+              { label: "Status", value: <StatusChip status={selected.status} /> },
+              { label: "Created", value: formatDateTime(selected.createdAt) },
+              { label: "Viewed", value: selected.viewedAt ? formatDateTime(selected.viewedAt) : "Not yet viewed" },
+              { label: "Ordered", value: selected.orderedAt ? formatDateTime(selected.orderedAt) : "Not ordered" },
+              { label: "Fulfilled", value: selected.fulfilledAt ? formatDateTime(selected.fulfilledAt) : "Not fulfilled" },
+              selected.order
+                ? { label: "Linked order", value: `${selected.order.id.slice(0, 8)} • ${formatStatusLabel(selected.order.status)}` }
+                : null
+            ].filter(Boolean) as { label: string; value: React.ReactNode }[]}
+          >
             <h3>Items</h3>
             <div className="stack-list">
               {selected.items.map((item) => (
-                <p className="list-row" key={`${selected.referralId}-${item.productId}`}>
-                  <strong>{item.name}</strong>
-                  <span>{item.quantity} × {item.unitPrice} {item.currency} / {item.unitLabel} ({item.sku})</span>
-                </p>
+                <div className="list-row" key={`${selected.referralId}-${item.productId}`}>
+                  <div>
+                    <strong>{item.name}</strong>
+                    <span className="muted">{item.sku}{item.unitLabel ? ` • ${item.unitLabel}` : ""} • Quantity {item.quantity}</span>
+                  </div>
+                  <span>{item.currency} {item.unitPrice}</span>
+                </div>
               ))}
             </div>
-          </Panel>
+          </AdminDetailPanel>
         ) : null}
-      </section>
-    </main>
+      </div>
+    </AdminPortalShell>
   );
 }
 
-function formatLabel(value: string): string {
-  return value.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "The referrals request could not be completed.";
+function describeError(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback;
 }

@@ -26,7 +26,7 @@ referralRouter.post(
 );
 
 export const adminReferralRouter = Router();
-adminReferralRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminReferralRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminReferralRouter.get("/", validateRequest({ query: adminReferralListQuerySchema }), listAdmin);
 adminReferralRouter.get("/:referralId", validateRequest({ params: referralIdParamsSchema }), getAdmin);
 referralRouter.get(

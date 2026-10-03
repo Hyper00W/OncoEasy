@@ -14,7 +14,7 @@ patientJourneyRouter.get("/stages/:stage", validateRequest({ params: journeyStag
 patientJourneyRouter.patch("/stage", validateRequest({ body: updateJourneyStageSchema }), advanceJourney);
 
 export const adminJourneyRouter = Router();
-adminJourneyRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminJourneyRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminJourneyRouter.get("/stages", listAdminStages);
 adminJourneyRouter.get("/stages/:stage", validateRequest({ params: journeyStageParamSchema }), getAdminStage);
 adminJourneyRouter.patch("/stages/:stage", validateRequest({ params: journeyStageParamSchema, body: updateJourneyContentSchema }), updateAdminStage);

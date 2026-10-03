@@ -20,7 +20,7 @@ storiesRouter.get("/", validateRequest({ query: storyListQuerySchema }), listPub
 storiesRouter.get("/:storyId", validateRequest({ params: storyIdParamsSchema }), getPublished);
 
 export const adminStoriesRouter = Router();
-adminStoriesRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminStoriesRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminStoriesRouter.get("/", validateRequest({ query: storyListQuerySchema }), listAdmin);
 adminStoriesRouter.get("/:storyId", validateRequest({ params: storyIdParamsSchema }), getAdmin);
 adminStoriesRouter.post("/", validateRequest({ body: createStorySchema }), create);

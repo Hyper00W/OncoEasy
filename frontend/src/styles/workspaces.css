@@ -1,0 +1,1802 @@
+/* ==========================================================================
+   OncoEasy workspace + commerce layer (Phase 7 / Ops redesign)
+   --------------------------------------------------------------------------
+   Premium treatment for the surfaces that share the brand but not the
+   information density:
+     A. Public/patient site chrome (header, nav, footer)
+     B. Pharmacy storefront + authenticated pharmacy workspace
+     C. Professional workspaces (doctor, pharmacist, admin/owner) — the
+        consolidated operations design system (ops-* primitives)
+     D. Editorial content pages (knowledge, stories, trials, testimonials)
+     E. Auth entry
+   ========================================================================== */
+
+/* ==========================================================================
+   A. Public / patient site chrome
+   ========================================================================== */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+}
+
+/* Nav gets a hairline + soft inner glow instead of a flat plate. */
+.site-header .site-nav {
+  backdrop-filter: saturate(140%) blur(8px);
+}
+
+/* Brand lockup and the icon cluster sit on a shared optical center; the
+   wordmark stays the anchor of the header row. */
+.site-header-top .container {
+  min-height: var(--header-height);
+}
+
+/* Compact single row on tablet/mobile once the inline nav collapses into
+   the hamburger drawer (media order matters: this file loads after index.css
+   and must win without a media query of its own). */
+@media (max-width: 1023px) {
+  .site-header-top .container,
+  .site-header-top {
+    min-height: 64px;
+  }
+}
+
+.site-header-top .site-brand-logo {
+  transition: opacity var(--motion-fast) var(--motion-ease-out);
+}
+
+.site-header-top .site-brand:hover .site-brand-logo {
+  opacity: 0.85;
+}
+
+/* Nav indicator: still exactly one ::after per link (motion.css). The nav
+   stretches the full header row, so the pill's default bottom:2px lands it on
+   the bar's lower edge — the teal underline of the reference design. */
+.site-header.navbar-dark .site-nav-link::after {
+  background: currentColor;
+}
+
+/* Nav dropdown reads as a small panel, not a list stuck to the bar. */
+.nav-menu {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: 0 22px 48px rgba(12, 41, 71, 0.16);
+  overflow: hidden;
+}
+
+.nav-menu-item {
+  border-radius: 0;
+}
+
+.nav-menu-item + .nav-menu-item {
+  border-top: 1px solid var(--line);
+}
+
+.nav-menu-icon {
+  transition: transform 280ms var(--motion-ease-out), background-color 280ms var(--motion-ease-out);
+}
+
+.nav-menu-item:hover .nav-menu-icon {
+  transform: translateY(-1px) scale(1.06);
+}
+
+/* Search field: the reference's soft rounded rectangle (8px), with the submit
+   action inset at 6px to match the reference's hero search control. */
+.search-field {
+  border-radius: 8px;
+  border-color: #dfe9e5;
+  box-shadow: 0 9px 25px rgba(30, 88, 84, 0.08);
+}
+
+.search-submit {
+  border-radius: 6px;
+  min-width: 96px;
+  margin-right: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.search-field:focus-within {
+  box-shadow: 0 0 0 4px rgba(0, 169, 157, 0.16);
+}
+
+/* Sticky footer band keeps the established-company composure. */
+.site-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Drawer: give the mobile nav a deliberate hierarchy. */
+.drawer-section-label {
+  margin-top: var(--space-5);
+}
+
+.drawer-accordion-trigger {
+  transition: background-color 220ms var(--motion-ease-out), color 220ms var(--motion-ease-out);
+}
+
+.drawer-accordion-panel {
+  animation: oe-page-enter 260ms var(--motion-ease-out) both;
+}
+
+/* ==========================================================================
+   B. Pharmacy
+   ========================================================================== */
+
+/* ---- B1. Storefront hero + category discovery ---- */
+
+.storefront-head {
+  padding-top: var(--space-6);
+}
+
+.catalog-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+  margin-top: var(--space-5);
+}
+
+.catalog-category-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: var(--shadow-xs);
+  transition:
+    transform 320ms var(--motion-ease-out),
+    border-color 320ms var(--motion-ease-out),
+    box-shadow 320ms var(--motion-ease-out);
+}
+
+.catalog-category-card:hover {
+  transform: translate3d(0, -4px, 0);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.catalog-category-card.is-active {
+  border-color: rgba(0, 169, 157, 0.45);
+  background: linear-gradient(150deg, rgba(233, 247, 244, 0.9), #fff 70%);
+  box-shadow: var(--shadow-sm);
+}
+
+.catalog-category-img {
+  display: block;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  background: var(--surface-sunken);
+}
+
+.catalog-category-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 620ms var(--motion-ease-out);
+}
+
+.catalog-category-card:hover .catalog-category-img img {
+  transform: scale(1.06);
+}
+
+.catalog-category-img-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--brand-600);
+  background: linear-gradient(150deg, var(--brand-50), var(--surface-sunken));
+}
+
+.catalog-category-name {
+  display: block;
+  padding: 0 4px 4px;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+
+/* ---- B2. Filters ---- */
+
+.filter-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.filter-panel-title {
+  letter-spacing: 0.09em;
+}
+
+.filter-option {
+  transition:
+    border-color 260ms var(--motion-ease-out),
+    background-color 260ms var(--motion-ease-out),
+    transform 200ms var(--motion-ease-out);
+}
+
+.filter-option:hover {
+  transform: translateX(2px);
+}
+
+.filter-option.is-active {
+  border-color: rgba(0, 169, 157, 0.45);
+  background: var(--teal-50);
+}
+
+/* ---- B3. Product cards: commercial and premium ---- */
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 8px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.product-card-media {
+  height: 152px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.product-card-media::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120px 80px at 20% 15%, rgba(255, 255, 255, 0.85), transparent 70%),
+    radial-gradient(160px 90px at 85% 90%, rgba(246, 181, 47, 0.12), transparent 72%);
+  pointer-events: none;
+}
+
+.product-card-monogram {
+  width: 62px;
+  height: 62px;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.product-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 8px 0;
+  flex: 1;
+}
+
+.product-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.product-card-name-link h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.product-card-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.product-card-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.product-price {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.24rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.product-price small {
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ---- B4. Pagination ---- */
+
+.pagination-page.is-current {
+  box-shadow: var(--shadow-xs);
+}
+
+.pagination-page,
+.pagination-step {
+  transition:
+    transform 200ms var(--motion-ease-out),
+    background-color 200ms var(--motion-ease-out),
+    border-color 200ms var(--motion-ease-out);
+}
+
+.pagination-page:hover,
+.pagination-step:hover {
+  transform: translate3d(0, -1px, 0);
+}
+
+/* ---- B5. Authenticated pharmacy workspace ---- */
+
+.workspace-header {
+  padding-bottom: var(--space-3);
+}
+
+.workspace-tabs,
+.pharmacy-tabs {
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.workspace-tab,
+.pharmacy-tab {
+  border-radius: var(--radius-pill);
+  transition:
+    background-color 240ms var(--motion-ease-out),
+    color 240ms var(--motion-ease-out);
+}
+
+/* ==========================================================================
+   C. Professional workspaces — operations design system
+   --------------------------------------------------------------------------
+   One token set + primitive library for admin/owner, doctor and pharmacist.
+   Voice: precision + trust. Surfaces stay quiet; colour is reserved for
+   hierarchy, status and interaction. Nothing decorative.
+   ========================================================================== */
+
+:root {
+  /* Workspace surfaces */
+  --ops-canvas: #f4f7f9;
+  --ops-card: #ffffff;
+  --ops-sunk: #f8fafb;
+  --ops-line: #e3e9ee;
+  --ops-line-soft: #eef2f5;
+  --ops-ink: #12253c;
+  --ops-ink-soft: #3d5468;
+  --ops-muted: #64798c;
+
+  /* Ops accent — indigo command identity (patient site keeps teal) */
+  --ops-accent: #4f46e5;
+  --ops-accent-deep: #3d34c9;
+  --ops-accent-soft: #eef0fe;
+  --ops-accent-line: #d6d9fb;
+  --ops-teal: #0d9488;
+  --ops-teal-soft: #e7f6f3;
+  --ops-amber: #b45309;
+  --ops-amber-soft: #fdf3e3;
+  --ops-green: #15803d;
+  --ops-green-soft: #e8f6ed;
+  --ops-red: #b4232f;
+  --ops-red-soft: #fdecec;
+
+  /* Elevation — hairline-first, shadow as quiet support */
+  --ops-shadow-1: 0 1px 2px rgba(18, 37, 60, 0.05);
+  --ops-shadow-2: 0 10px 28px -12px rgba(18, 37, 60, 0.18);
+  --ops-radius: 14px;
+  --ops-radius-sm: 9px;
+
+  /* Rhythm */
+  --ops-gap: 18px;
+}
+
+/* ---- C1. Portal frame ---- */
+
+.portal-page {
+  background: var(--ops-canvas);
+}
+
+.portal-main {
+  width: min(100% - 40px, 1280px);
+  margin: 0 auto;
+  padding: var(--space-5) 0 var(--space-8);
+}
+
+.portal-hero {
+  padding: var(--space-2) 0 var(--space-5);
+}
+
+.portal-hero h1 {
+  margin-bottom: 6px;
+  color: var(--ops-ink);
+  font-size: clamp(1.55rem, 2.6vw, 1.9rem);
+  font-weight: 750;
+  letter-spacing: -0.022em;
+}
+
+.portal-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 8px;
+  color: var(--ops-accent);
+  font-size: 11.5px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.portal-hero-eyebrow::before {
+  content: "";
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ops-accent);
+  opacity: 0.7;
+}
+
+.portal-hero-copy {
+  max-width: 62ch;
+  color: var(--ops-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Shared section heading row above full-width zones. */
+.ops-zone-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: var(--space-6) 0 12px;
+}
+
+.ops-zone-title h2 {
+  margin: 0;
+  color: var(--ops-ink);
+  font-size: 15.5px;
+  font-weight: 750;
+  letter-spacing: -0.012em;
+}
+
+.ops-zone-title .link-button,
+.ops-zone-title .button-link {
+  font-size: 13px;
+}
+
+/* ---- C2. Cards and information blocks ---- */
+
+/* The single panel finish for all three workspaces. */
+.ops-card {
+  padding: 22px 24px;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  background: var(--ops-card);
+  box-shadow: var(--ops-shadow-1);
+}
+
+/* Quiet header used at the top of ops-cards. */
+.ops-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ops-card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: var(--ops-ink);
+  font-size: 14.5px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.ops-card-head .ops-card-kicker {
+  margin-left: 2px;
+  color: var(--ops-muted);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.ops-card-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--ops-radius-sm);
+  color: var(--ops-accent);
+  background: var(--ops-accent-soft);
+}
+
+.ops-card-sub {
+  margin: -10px 0 14px;
+  color: var(--ops-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Elevated hover only for cards that are entirely clickable. */
+button.ops-card,
+a.ops-card {
+  transition: transform 240ms var(--motion-ease-out), box-shadow 240ms var(--motion-ease-out), border-color 240ms var(--motion-ease-out);
+}
+
+button.ops-card:hover,
+a.ops-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ops-accent-line);
+  box-shadow: var(--ops-shadow-2);
+}
+
+/* ---- C3. KPI cards ---- */
+
+.ops-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ops-gap);
+}
+
+.ops-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  background: var(--ops-card);
+  box-shadow: var(--ops-shadow-1);
+  color: inherit;
+  text-align: left;
+  overflow: hidden;
+  transition: transform 240ms var(--motion-ease-out), box-shadow 240ms var(--motion-ease-out), border-color 240ms var(--motion-ease-out);
+}
+
+button.ops-kpi:hover {
+  transform: translateY(-3px);
+  border-color: var(--ops-accent-line);
+  box-shadow: var(--ops-shadow-2);
+}
+
+button.ops-kpi:hover .ops-kpi-go {
+  transform: translateX(3px);
+  color: var(--ops-accent);
+}
+
+.ops-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ops-kpi-label {
+  margin: 0;
+  color: var(--ops-muted);
+  font-size: 11.5px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ops-kpi-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--ops-accent-soft);
+  color: var(--ops-accent);
+}
+
+.ops-kpi-value {
+  color: var(--ops-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 2.6vw, 2.35rem);
+  font-weight: 620;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-kpi-hint {
+  margin: 0;
+  color: var(--ops-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.ops-kpi-go {
+  margin-top: auto;
+  padding-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ops-muted);
+  font-size: 12.5px;
+  font-weight: 650;
+  transition: transform 200ms var(--motion-ease-out), color 200ms var(--motion-ease-out);
+}
+
+/* Tone accents: a slim left rail + tinted icon tile. Quiet by design. */
+.ops-kpi::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--ops-accent);
+  opacity: 0;
+  transition: opacity 240ms var(--motion-ease-out);
+}
+
+.ops-kpi-tone-amber::before { opacity: 1; background: var(--ops-amber); }
+.ops-kpi-tone-amber .ops-kpi-icon { color: var(--ops-amber); background: var(--ops-amber-soft); }
+.ops-kpi-tone-teal::before { opacity: 1; background: var(--ops-teal); }
+.ops-kpi-tone-teal .ops-kpi-icon { color: var(--ops-teal); background: var(--ops-teal-soft); }
+.ops-kpi-tone-green::before { opacity: 1; background: var(--ops-green); }
+.ops-kpi-tone-green .ops-kpi-icon { color: var(--ops-green); background: var(--ops-green-soft); }
+.ops-kpi-tone-red::before { opacity: 1; background: var(--ops-red); }
+.ops-kpi-tone-red .ops-kpi-icon { color: var(--ops-red); background: var(--ops-red-soft); }
+
+/* ---- C4. Activity / trend blocks (admin command center) ---- */
+
+.ops-trend {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(280px, 1fr);
+  gap: var(--ops-gap);
+  align-items: stretch;
+}
+
+.ops-sparkband {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 120px;
+  margin-top: 6px;
+}
+
+.ops-sparkband span {
+  flex: 0 1 44px;
+  min-width: 6px;
+  height: calc(var(--h) * 1%);
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, var(--ops-accent) 0%, rgba(79, 70, 229, 0.25) 100%);
+  opacity: 0.85;
+  transform-origin: bottom;
+  animation: ops-bar-grow 640ms var(--motion-ease-out) both;
+  animation-delay: calc(var(--i) * 28ms);
+}
+
+.ops-sparkband span:hover {
+  opacity: 1;
+  background: linear-gradient(180deg, var(--ops-accent-deep) 0%, rgba(79, 70, 229, 0.4) 100%);
+}
+
+.ops-sparkband-empty {
+  display: grid;
+  place-items: center;
+  height: 120px;
+  border-radius: var(--ops-radius-sm);
+  color: var(--ops-muted);
+  font-size: 13px;
+  background: var(--ops-sunk);
+}
+
+@keyframes ops-bar-grow {
+  from { transform: scaleY(0.15); opacity: 0.2; }
+  to { transform: scaleY(1); opacity: 0.85; }
+}
+
+/* KPI entrance: a quiet staggered fade-up (delay comes from inline
+   animationDelay on each card). Runs once; reduced-motion turns it off. */
+button.ops-kpi,
+.ops-stage,
+.ops-kpi {
+  animation: ops-enter 420ms var(--motion-ease-out) backwards;
+}
+
+@keyframes ops-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Action feed on the right of the trend zone. */
+.ops-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.ops-action-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--ops-line-soft);
+  border-radius: var(--ops-radius-sm);
+  transition: background-color 180ms var(--motion-ease-out);
+}
+
+.ops-action-row:hover {
+  background: var(--ops-sunk);
+}
+
+.ops-action-row:last-child {
+  border-bottom: 0;
+}
+
+.ops-action-rail {
+  flex: 0 0 4px;
+  align-self: stretch;
+  border-radius: 4px;
+  background: var(--ops-accent);
+}
+
+.ops-action-rail.rail-amber { background: var(--ops-amber); }
+.ops-action-rail.rail-teal { background: var(--ops-teal); }
+.ops-action-rail.rail-red { background: var(--ops-red); }
+
+.ops-action-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ops-action-title {
+  display: block;
+  color: var(--ops-ink);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.ops-action-meta {
+  display: block;
+  margin-top: 1px;
+  color: var(--ops-muted);
+  font-size: 12.5px;
+}
+
+.ops-action-count {
+  flex: 0 0 auto;
+  min-width: 34px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: var(--ops-accent-deep);
+  background: var(--ops-accent-soft);
+  font-size: 13px;
+  font-weight: 750;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-action-count.count-amber { color: var(--ops-amber); background: var(--ops-amber-soft); }
+.ops-action-count.count-teal { color: var(--ops-teal); background: var(--ops-teal-soft); }
+.ops-action-count.count-red { color: var(--ops-red); background: var(--ops-red-soft); }
+.ops-action-count.count-zero { color: var(--ops-muted); background: var(--ops-sunk); }
+
+/* ---- C5. Mini queue lists inside cards ---- */
+
+.ops-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ops-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--ops-line-soft);
+}
+
+.ops-list li:last-child {
+  border-bottom: 0;
+}
+
+.ops-list-title {
+  min-width: 0;
+  color: var(--ops-ink);
+  font-size: 13.5px;
+  font-weight: 620;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-list-meta {
+  display: block;
+  margin-top: 1px;
+  color: var(--ops-muted);
+  font-size: 12.5px;
+  font-weight: 450;
+}
+
+/* Optional note line under an ops-list title (e.g. patient notes). */
+.ops-list-note {
+  display: block;
+  margin-top: 3px;
+  color: var(--ops-ink-soft);
+  font-size: 12.5px;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Trailing action cluster inside an ops-list row. */
+.ops-row-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.ops-empty {
+  padding: 22px 16px;
+  border: 1px dashed var(--ops-line);
+  border-radius: var(--ops-radius-sm);
+  color: var(--ops-muted);
+  background: var(--ops-sunk);
+  font-size: 13.5px;
+  text-align: center;
+}
+
+/* ---- C6. Workflow rail (pharmacist fulfillment stages) ---- */
+
+.ops-flow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--ops-gap);
+}
+
+.ops-stage {
+  position: relative;
+  padding: 16px 16px 14px;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  background: var(--ops-card);
+  box-shadow: var(--ops-shadow-1);
+  color: inherit;
+  text-align: left;
+  transition: transform 240ms var(--motion-ease-out), box-shadow 240ms var(--motion-ease-out), border-color 240ms var(--motion-ease-out);
+}
+
+button.ops-stage:hover {
+  transform: translateY(-3px);
+  border-color: var(--ops-accent-line);
+  box-shadow: var(--ops-shadow-2);
+}
+
+/* Connector arrows between stages (hidden on the last stage and on wrap). */
+.ops-stage::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -11px;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #b9c6d2;
+  border-right: 2px solid #b9c6d2;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.ops-stage:last-child::after {
+  display: none;
+}
+
+.ops-stage-step {
+  color: var(--ops-muted);
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ops-stage-value {
+  display: block;
+  margin-top: 6px;
+  color: var(--ops-ink);
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-stage-label {
+  display: block;
+  margin-top: 5px;
+  color: var(--ops-ink-soft);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.ops-stage.is-hot {
+  border-color: rgba(180, 83, 9, 0.4);
+  background: linear-gradient(160deg, var(--ops-amber-soft), #fff 65%);
+}
+
+.ops-stage.is-hot .ops-stage-value {
+  color: var(--ops-amber);
+}
+
+.ops-stage.is-idle .ops-stage-value {
+  color: var(--ops-muted);
+}
+
+/* Honesty note under the pharmacist workflow rail. */
+.ops-flow-note {
+  margin: -6px 0 0;
+  color: var(--ops-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+/* ---- C7. Admin shell ---- */
+
+.admin-shell {
+  background: var(--ops-canvas);
+}
+
+.admin-sidebar {
+  background: linear-gradient(188deg, #131f38 0%, #0d1830 62%, #0a1326 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-sidebar-brand {
+  padding: 8px 10px;
+  border-radius: var(--ops-radius-sm);
+  transition: background-color 200ms var(--motion-ease-out);
+}
+
+.admin-sidebar-brand:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-sidebar .admin-nav-heading {
+  margin: 0 8px 6px;
+  color: rgba(168, 190, 216, 0.55);
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.admin-sidebar .admin-nav-list {
+  display: grid;
+  gap: 2px;
+}
+
+.admin-sidebar .admin-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 12px;
+  border-radius: var(--ops-radius-sm);
+  color: rgba(214, 226, 240, 0.8);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition:
+    background-color 200ms var(--motion-ease-out),
+    color 200ms var(--motion-ease-out);
+}
+
+.admin-sidebar .admin-nav-link::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 3px;
+  height: 0;
+  border-radius: 3px;
+  background: var(--ops-accent);
+  transform: translateY(-50%);
+  transition: height 240ms var(--motion-ease-out), background-color 240ms var(--motion-ease-out);
+}
+
+/* Active rail reads indigo on navy; hover keeps the rest quiet. */
+.admin-sidebar .admin-nav-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.admin-sidebar .admin-nav-link.is-active {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(99, 91, 255, 0.24), rgba(99, 91, 255, 0.1));
+  font-weight: 700;
+}
+
+.admin-sidebar .admin-nav-link.is-active::before {
+  height: 16px;
+  background: #8b84ff;
+}
+
+.admin-nav-accent-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4fe3c1;
+  box-shadow: 0 0 0 3px rgba(79, 227, 193, 0.16);
+}
+
+.admin-sidebar-footer {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-sidebar-user {
+  color: #fff;
+  font-size: 13.5px;
+}
+
+.admin-sidebar-role {
+  color: rgba(168, 190, 216, 0.6);
+  font-size: 11px;
+  letter-spacing: 0.09em;
+}
+
+.admin-sidebar .admin-signout {
+  border-color: rgba(255, 255, 255, 0.26);
+  color: #fff;
+  background: transparent;
+}
+
+.admin-sidebar .admin-signout:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.admin-main {
+  width: min(100% - 48px, 1280px);
+  padding-top: var(--space-5);
+}
+
+.admin-sections {
+  display: grid;
+  gap: var(--ops-gap);
+}
+
+/* Admin topbar: white glass strip on the canvas. */
+.admin-topbar {
+  min-height: 58px;
+}
+
+.admin-topbar h1 {
+  color: var(--ops-ink);
+  font-size: 15.5px;
+  font-weight: 750;
+  letter-spacing: -0.012em;
+}
+
+.admin-topbar-eyebrow {
+  color: var(--ops-accent);
+  font-size: 10.5px;
+  letter-spacing: 0.13em;
+}
+
+.admin-topbar.navbar-dark .button-secondary {
+  border-color: var(--ops-accent-line);
+  color: var(--ops-accent-deep);
+  background: #fff;
+}
+
+.admin-topbar.navbar-dark .button-secondary:hover:not(:disabled) {
+  border-color: var(--ops-accent);
+  color: var(--ops-accent-deep);
+  background: var(--ops-accent-soft);
+  box-shadow: none;
+}
+
+.admin-topbar.navbar-dark .header-icon-button {
+  color: var(--ops-ink-soft);
+}
+
+.admin-topbar.navbar-dark .header-icon-button:hover {
+  color: var(--ops-accent);
+  background: var(--ops-accent-soft);
+}
+
+/* Command-center hero band on the admin overview. */
+.ops-command-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 26px 28px;
+  border: 1px solid #1b2c50;
+  border-radius: var(--ops-radius);
+  background: linear-gradient(118deg, #101d3a 0%, #14244c 55%, #1a2f63 100%);
+  color: #e6ecfa;
+}
+
+.ops-command-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(560px 200px at 88% -20%, rgba(99, 91, 255, 0.28), transparent 65%),
+    radial-gradient(420px 180px at 4% 120%, rgba(13, 148, 136, 0.14), transparent 60%);
+  pointer-events: none;
+}
+
+.ops-command-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ops-command-hero .ops-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: #b9c4f5;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.ops-command-hero h2 {
+  margin: 0 0 6px;
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.ops-command-hero p {
+  max-width: 68ch;
+  margin: 0;
+  color: rgba(230, 236, 250, 0.78);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* ---- C8. Tables ---- */
+
+.admin-table-wrap,
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  background: var(--ops-card);
+  box-shadow: var(--ops-shadow-1);
+}
+
+.admin-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--ops-line);
+  background: var(--ops-sunk);
+  color: var(--ops-muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.admin-table tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ops-line-soft);
+  color: var(--ops-ink);
+  font-size: 13.5px;
+  vertical-align: middle;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table tbody tr {
+  transition: background-color 160ms var(--motion-ease-out);
+}
+
+.admin-table tbody tr:hover {
+  background: #f6f9fc;
+}
+
+.admin-table tbody tr[aria-selected="true"],
+.admin-table tbody tr.is-selected {
+  background: var(--ops-accent-soft);
+  box-shadow: inset 3px 0 0 var(--ops-accent);
+}
+
+.admin-table td:last-child {
+  text-align: right;
+}
+
+.admin-table td:last-child .button {
+  min-height: 34px;
+  padding: 6px 14px;
+}
+
+.admin-table .table-subtext {
+  display: block;
+  margin-top: 1px;
+  color: var(--ops-muted);
+  font-size: 12px;
+}
+
+.admin-filter-bar .input,
+.admin-filter-bar .button,
+.admin-filter-bar .button-secondary {
+  min-height: 40px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.admin-filter-bar .button-secondary {
+  font-weight: 600;
+}
+
+.admin-detail-panel {
+  border-radius: var(--ops-radius);
+  box-shadow: var(--ops-shadow-2);
+}
+
+/* ---- C9. Doctor workspace identity ---- */
+
+/* The doctor portal keeps the ops canvas but leads with a clinical hero. */
+.doc-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ops-gap);
+  align-items: center;
+  padding: 24px 26px;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  background:
+    radial-gradient(480px 190px at 100% -30%, rgba(79, 70, 229, 0.1), transparent 62%),
+    var(--ops-card);
+  box-shadow: var(--ops-shadow-1);
+}
+
+.doc-hero h1 {
+  margin: 4px 0 6px;
+  color: var(--ops-ink);
+  font-size: clamp(1.5rem, 2.4vw, 1.85rem);
+  font-weight: 750;
+  letter-spacing: -0.022em;
+}
+
+.doc-hero .doc-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.doc-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--ops-line);
+  border-radius: 999px;
+  color: var(--ops-ink-soft);
+  background: var(--ops-sunk);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.doc-hero-chip strong {
+  color: var(--ops-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.doc-hero-chip.chip-attention {
+  border-color: rgba(180, 83, 9, 0.35);
+  color: var(--ops-amber);
+  background: var(--ops-amber-soft);
+}
+
+.doc-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--ops-gap);
+  align-items: start;
+}
+
+/* Doctor referral-insight strip: quiet inline stats under the pipeline. */
+.doc-insight-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.doc-insight-row > div {
+  padding: 14px 16px;
+  border: 1px solid var(--ops-line-soft);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-sunk);
+}
+
+.doc-insight-value {
+  display: block;
+  color: var(--ops-ink);
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.doc-insight-label {
+  display: block;
+  margin-top: 3px;
+  color: var(--ops-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* ---- C10. Generic portal helpers ---- */
+
+.portal-sections {
+  display: grid;
+  gap: var(--ops-gap);
+}
+
+/* Workspace pages render inside .portal-main / .admin-main, which are already
+   centered and width-capped — so panels there should fill their column. The
+   plain .panel 440px cap stays for the narrow patient form contexts. */
+.portal-main .panel,
+.admin-main .panel {
+  width: 100%;
+  max-width: 100%;
+}
+
+.portal-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ops-gap);
+  align-items: start;
+}
+
+.queue-count-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ops-gap);
+}
+
+/* Legacy queue-count primitives now map onto the ops KPI look so no page
+   regresses while it still references them. */
+.queue-count-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  background: var(--ops-card);
+  box-shadow: var(--ops-shadow-1);
+  color: inherit;
+  text-align: left;
+  transition: transform 240ms var(--motion-ease-out), box-shadow 240ms var(--motion-ease-out), border-color 240ms var(--motion-ease-out);
+}
+
+.queue-count-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--ops-accent-line);
+  box-shadow: var(--ops-shadow-2);
+}
+
+.queue-count-number {
+  color: var(--ops-ink);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 620;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-count-label {
+  color: var(--ops-muted);
+  font-size: 11.5px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.queue-count-hint {
+  color: var(--ops-muted);
+  font-size: 12.5px;
+}
+
+.queue-count-card-urgent {
+  border-color: rgba(180, 83, 9, 0.38);
+  background: linear-gradient(160deg, var(--ops-amber-soft), #fff 62%);
+}
+
+.queue-count-card-urgent .queue-count-number {
+  color: var(--ops-amber);
+}
+
+/* Status chips: restrained enterprise treatment. */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.status-chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.75;
+}
+
+.status-chip-positive {
+  color: var(--ops-green);
+  background: var(--ops-green-soft);
+}
+
+.status-chip-attention {
+  color: var(--ops-amber);
+  background: var(--ops-amber-soft);
+}
+
+.status-chip-negative {
+  color: var(--ops-red);
+  background: var(--ops-red-soft);
+}
+
+.status-chip-neutral {
+  color: var(--ops-ink-soft);
+  background: var(--ops-sunk);
+}
+
+/* ==========================================================================
+   D. Editorial content pages
+   ========================================================================== */
+
+/* Knowledge article grid and story/testimonial media get a consistent
+   editorial rhythm without forcing every item into an identical white box. */
+.article-grid,
+.stories-grid,
+.trials-grid,
+/* Reveal wrappers inside the testimonials grid must stretch their Panel card
+   so the masonry-style grid keeps equal-height columns. */
+.testimonials-grid > .reveal {
+  display: flex;
+}
+
+.testimonials-grid > .reveal > .panel {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.testimonials-grid {
+  gap: 18px;
+}
+
+.article-card,
+.story-card,
+.trial-card {
+  border-radius: var(--radius-lg);
+}
+
+/* Featured editorial item spans two columns on wide screens. */
+.article-card.is-featured,
+.story-card.is-featured {
+  grid-column: span 2;
+}
+
+@media (max-width: 860px) {
+  .article-card.is-featured,
+  .story-card.is-featured {
+    grid-column: span 1;
+  }
+}
+
+/* Single-story reader (patient stories): exactly one full-width card per
+   page — fixed media band on the left, text stack on the right. Previous/
+   Next step one story at a time. */
+.stories-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.stories-grid-single .story-card {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  align-content: center;
+  min-height: 208px;
+  padding: 0;
+}
+
+.stories-grid-single .story-card-media {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-self: stretch;
+  width: 100%;
+  height: auto;
+  min-height: 208px;
+}
+
+.stories-grid-single .story-card-name {
+  grid-column: 2;
+  margin-top: 0;
+  padding-right: 20px;
+}
+
+.stories-grid-single .story-card-excerpt {
+  grid-column: 2;
+  padding-right: 20px;
+}
+
+.stories-grid-single .story-card-date {
+  grid-column: 2;
+  justify-self: start;
+  align-self: end;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+  .stories-grid-single .story-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .stories-grid-single .story-card-media {
+    grid-column: 1;
+    grid-row: 1;
+    height: 160px;
+    min-height: 160px;
+  }
+
+  .stories-grid-single .story-card-name,
+  .stories-grid-single .story-card-excerpt,
+  .stories-grid-single .story-card-date {
+    grid-column: 1;
+  }
+
+  .stories-grid-single .story-card-name {
+    margin-top: 12px;
+    padding: 0 16px;
+  }
+
+  .stories-grid-single .story-card-excerpt {
+    padding: 0 16px;
+  }
+}
+
+/* ==========================================================================
+   E. Auth entry
+   ========================================================================== */
+
+.auth-page {
+  animation-delay: 0ms;
+}
+
+.otp-input,
+.otp-digit {
+  transition: border-color 200ms var(--motion-ease-out), box-shadow 200ms var(--motion-ease-out);
+}
+
+/* ==========================================================================
+   Responsive sweep
+   ========================================================================== */
+
+@media (max-width: 1280px) {
+  .ops-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ops-kpi-grid .ops-kpi:nth-child(n + 5) {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 1100px) {
+  .storefront-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  .storefront-filters {
+    position: static;
+  }
+
+  .ops-trend {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-flow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ops-stage:nth-child(3)::after {
+    display: none;
+  }
+
+  .doc-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .doc-insight-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-kpi-grid .ops-kpi:nth-child(n + 5) {
+    grid-column: auto;
+  }
+
+  .queue-count-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-sidebar {
+    display: none;
+  }
+
+  .admin-burger {
+    display: inline-flex;
+  }
+
+  .admin-main {
+    width: min(100% - 28px, 1280px);
+  }
+
+  .portal-main {
+    width: min(100% - 28px, 1280px);
+  }
+
+  .doc-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .portal-main,
+  .admin-main {
+    width: min(100% - 24px, 1280px);
+    padding-bottom: var(--space-7);
+  }
+
+  /* Zone-heading rows and card headers wrap instead of pushing their
+     action button out. */
+  .ops-zone-title,
+  .ops-card-head {
+    flex-wrap: wrap;
+  }
+
+  /* Restore the index.css data-label card conversion that the desktop
+     min-width in the admin-table restyle defeats below 760px. */
+  .admin-table {
+    min-width: 0;
+  }
+
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table tr {
+    margin-bottom: 10px;
+  }
+
+  .ops-flow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-stage::after {
+    display: none;
+  }
+
+  .catalog-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-card {
+    padding: 18px 16px;
+  }
+
+  .ops-command-hero {
+    padding: 20px 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .queue-count-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-kpi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .portal-main,
+  .admin-main {
+    width: min(100% - 20px, 1280px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-sparkband span,
+  button.ops-kpi,
+  .ops-stage,
+  .ops-kpi {
+    animation: none;
+  }
+
+  button.ops-kpi:hover,
+  button.ops-stage:hover,
+  .queue-count-card:hover,
+  button.ops-card:hover,
+  a.ops-card:hover {
+    transform: none;
+  }
+}

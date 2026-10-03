@@ -5,10 +5,9 @@ import { z } from "zod";
 
 import { prisma } from "../../database/prisma";
 import { AppError } from "../../errors/app-error";
-import {
-  generateAccessToken,
-  generateRefreshToken
-} from "../../services/jwt";
+import { recordAuditEventSafe } from "../../observability/audit";
+import { generateAccessToken } from "../../services/jwt";
+import { issueRefreshSession } from "./refresh-session.service";
 import { hashPassword, verifyPassword } from "../../services/password";
 
 const OTP_TTL_MS = 60_000;
@@ -97,6 +96,15 @@ export async function requestPatientOtp(phone: string): Promise<{
     }
   });
 
+  // Security-relevant signal: an OTP was issued for this phone. Only the
+  // category is recorded — never the phone number, the OTP value, or its
+  // hash. The user is not known yet (the challenge precedes authentication).
+  await recordAuditEventSafe({
+    eventType: "OTP_REQUESTED",
+    resourceType: "USER",
+    metadata: { category: "CHALLENGE_CREATED" }
+  });
+
   return {
     expiresAt,
     ...(process.env.NODE_ENV === "test" ? { testOtp: otp } : {})
@@ -123,18 +131,38 @@ export async function verifyPatientOtp(phone: string, otp: string): Promise<{
   });
 
   if (!challenge) {
+    await recordAuditEventSafe({
+      eventType: "OTP_VERIFICATION_FAILED",
+      resourceType: "USER",
+      metadata: { category: "NO_ACTIVE_CHALLENGE" }
+    });
     throw invalidOtpError();
   }
 
   if (challenge.consumedAt) {
+    await recordAuditEventSafe({
+      eventType: "OTP_VERIFICATION_FAILED",
+      resourceType: "USER",
+      metadata: { category: "OTP_ALREADY_CONSUMED" }
+    });
     throw new AppError(400, "OTP_ALREADY_CONSUMED", "This OTP has already been used");
   }
 
   if (challenge.expiresAt.getTime() <= Date.now()) {
+    await recordAuditEventSafe({
+      eventType: "OTP_VERIFICATION_FAILED",
+      resourceType: "USER",
+      metadata: { category: "OTP_EXPIRED" }
+    });
     throw new AppError(400, "OTP_EXPIRED", "This OTP has expired");
   }
 
   if (challenge.attempts >= MAX_VERIFICATION_ATTEMPTS) {
+    await recordAuditEventSafe({
+      eventType: "OTP_VERIFICATION_FAILED",
+      resourceType: "USER",
+      metadata: { category: "OTP_ATTEMPTS_EXCEEDED" }
+    });
     throw new AppError(
       429,
       "OTP_ATTEMPTS_EXCEEDED",
@@ -156,6 +184,11 @@ export async function verifyPatientOtp(phone: string, otp: string): Promise<{
     });
 
     if (updated.count === 0) {
+      await recordAuditEventSafe({
+        eventType: "OTP_VERIFICATION_FAILED",
+        resourceType: "USER",
+        metadata: { category: "OTP_ATTEMPTS_EXCEEDED" }
+      });
       throw new AppError(
         429,
         "OTP_ATTEMPTS_EXCEEDED",
@@ -163,6 +196,11 @@ export async function verifyPatientOtp(phone: string, otp: string): Promise<{
       );
     }
 
+    await recordAuditEventSafe({
+      eventType: "OTP_VERIFICATION_FAILED",
+      resourceType: "USER",
+      metadata: { category: "INVALID_OTP" }
+    });
     throw invalidOtpError();
   }
 
@@ -199,9 +237,22 @@ export async function verifyPatientOtp(phone: string, otp: string): Promise<{
 
   const tokenPayload = { userId: user.id, role: user.role };
 
+  // Security-relevant audit: successful patient authentication. The phone
+  // number and OTP value are never recorded.
+  await recordAuditEventSafe({
+    eventType: "LOGIN_SUCCESS",
+    actorUserId: user.id,
+    actorRole: user.role,
+    resourceType: "USER",
+    resourceId: user.id
+  });
+
   return {
     accessToken: generateAccessToken(tokenPayload),
-    refreshToken: generateRefreshToken(tokenPayload),
+    // Stateful rotating refresh credential; the legacy signed refresh JWT is
+    // retained in the response shape for backward compatibility but is not
+    // accepted by the refresh endpoint.
+    refreshToken: await issueRefreshSession(user.id, user.role),
     user: {
       id: user.id,
       phone: user.phone,

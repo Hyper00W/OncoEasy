@@ -6,6 +6,7 @@ import { validateCartItems } from "../carts/cart.validation";
 import type { AdminOrderListQuery, CreateOrderInput } from "./order.schemas";
 import { toOrderResponse } from "./order.mapper";
 import { findReferralForOrder, markReferralOrdered } from "../../referrals/referral.service";
+import { recordAuditEvent } from "../../../observability/audit";
 
 const orderInclude = {
   items: { orderBy: { createdAt: "asc" as const } }
@@ -131,6 +132,17 @@ export async function createPatientOrder(patientId: string, input: CreateOrderIn
     if (referral) {
       await markReferralOrdered(transaction, referral.id);
     }
+
+    // Business-action audit: order conversion from cart. Totals/prices stay
+    // in the order record; audit carries only the origin category.
+    await recordAuditEvent(transaction, {
+      eventType: "ORDER_CREATED",
+      actorUserId: patientId,
+      actorRole: "PATIENT",
+      resourceType: "ORDER",
+      resourceId: order.id,
+      metadata: { originType: referral ? "REFERRAL" : "DIRECT_CART" }
+    });
 
     return order;
     });

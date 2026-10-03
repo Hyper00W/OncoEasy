@@ -8,6 +8,7 @@ import { toLabBookingResponse, toLabTestResponse } from "./lab.mapper";
 import { normalizeLabReportName, validateLabReportFile } from "./lab.storage";
 import type { BookLabBookingInput, CreateLabBookingInput, LabListQuery, UpdateLabStatusInput } from "./lab.schemas";
 import { recordAnalyticsEvent } from "../analytics/analytics.events";
+import { recordAuditEvent } from "../../observability/audit";
 import { getLabBookingProvider } from "./lab-provider";
 
 function currentProviderInfo() {
@@ -64,6 +65,14 @@ export async function createLabBooking(patientId: string, input: CreateLabBookin
       include: bookingInclude
     });
     await recordAnalyticsEvent(transaction, "LAB_BOOKING_CREATED", { userId: patientId, entityType: "LAB_BOOKING", entityId: created.id });
+    await recordAuditEvent(transaction, {
+      eventType: "LAB_BOOKING_CREATED",
+      actorUserId: patientId,
+      actorRole: "PATIENT",
+      resourceType: "LAB_BOOKING",
+      resourceId: created.id,
+      metadata: { collectionType: input.collectionType }
+    });
     return created;
   });
   return toLabBookingResponse(booking);
@@ -158,6 +167,14 @@ export async function recordExternalBooking(bookingId: string, input: BookLabBoo
       data: { externalOrderId: input.externalOrderId, status: LabBookingStatus.BOOKED },
       include: bookingInclude
     });
+    // DSA booking reference recording: the external order reference is an
+    // operational identifier and is safe to audit; patient data is not.
+    await recordAuditEvent(prisma, {
+      eventType: "LAB_BOOKING_STATUS_CHANGED",
+      resourceType: "LAB_BOOKING",
+      resourceId: bookingId,
+      metadata: { from: LabBookingStatus.PENDING_OPS, to: LabBookingStatus.BOOKED }
+    });
     return { ...toLabBookingResponse(updated), provider: currentProviderInfo() };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -187,8 +204,28 @@ export async function updateAdminBookingStatus(bookingId: string, input: UpdateL
   if (booking.externalOrderId) {
     await provider.pushExternalStatus({ bookingId, externalOrderId: booking.externalOrderId, status: input.status });
   }
-  const updated = await prisma.labBooking.update({ where: { id: bookingId }, data: { status: input.status, ...(input.status === LabBookingStatus.CANCELLED ? { cancellationReason: input.reason || null } : {}) }, include: bookingInclude });
-  return { ...toLabBookingResponse(updated), provider: currentProviderInfo() };
+  try {
+    // Conditional transition: only a row still in the source status is moved,
+    // so concurrent Ops updates cannot interleave contradictory statuses.
+    const updated = await prisma.labBooking.updateMany({
+      where: { id: bookingId, status: booking.status },
+      data: { status: input.status, ...(input.status === LabBookingStatus.CANCELLED ? { cancellationReason: input.reason || null } : {}) }
+    });
+    if (updated.count === 0) await throwBookingStateError(bookingId);
+    await recordAuditEvent(prisma, {
+      eventType: "LAB_BOOKING_STATUS_CHANGED",
+      resourceType: "LAB_BOOKING",
+      resourceId: bookingId,
+      metadata: { from: booking.status, to: input.status }
+    });
+    const refreshed = await prisma.labBooking.findUniqueOrThrow({ where: { id: bookingId }, include: bookingInclude });
+    return { ...toLabBookingResponse(refreshed), provider: currentProviderInfo() };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      await throwBookingStateError(bookingId);
+    }
+    throw error;
+  }
 }
 
 export async function uploadLabReport(bookingId: string, file: Express.Multer.File | undefined) {
@@ -200,6 +237,14 @@ export async function uploadLabReport(bookingId: string, file: Express.Multer.Fi
   const uploaded = await uploadPrivateFile("lab-reports", { extension: fileType.extension, contentType: fileType.mimeType, body: file.buffer });
   try {
     const updated = await prisma.labBooking.update({ where: { id: bookingId }, data: { status: LabBookingStatus.REPORT_READY, reportStorageKey: uploaded.key, reportDocumentName: normalizeLabReportName(file.originalname), reportMimeType: fileType.mimeType, reportChecksum: createHash("sha256").update(file.buffer).digest("hex"), reportUploadedAt: new Date() }, include: bookingInclude });
+    // Report upload is a sensitive Ops action; only the booking reference and
+    // transition are recorded — never the document name or contents.
+    await recordAuditEvent(prisma, {
+      eventType: "LAB_REPORT_UPLOADED",
+      resourceType: "LAB_BOOKING",
+      resourceId: bookingId,
+      metadata: { to: LabBookingStatus.REPORT_READY }
+    });
     return toLabBookingResponse(updated);
   } catch (error) {
     await deletePrivateObject(uploaded.key);

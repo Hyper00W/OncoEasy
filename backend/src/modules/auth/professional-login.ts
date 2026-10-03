@@ -3,10 +3,9 @@ import { z } from "zod";
 
 import { prisma } from "../../database/prisma";
 import { AppError } from "../../errors/app-error";
-import {
-  generateAccessToken,
-  generateRefreshToken
-} from "../../services/jwt";
+import { recordAuditEventSafe } from "../../observability/audit";
+import { generateAccessToken } from "../../services/jwt";
+import { issueRefreshSession } from "./refresh-session.service";
 import { verifyPassword } from "../../services/password";
 
 const invalidPasswordHash =
@@ -62,6 +61,16 @@ export async function loginProfessionalUser(
     !user.isActive ||
     user.role === UserRole.PATIENT
   ) {
+    // Security-relevant audit: category only — never the attempted password,
+    // email content beyond the safe actor reference, or any token.
+    await recordAuditEventSafe({
+      eventType: "LOGIN_FAILURE",
+      actorUserId: user?.id ?? null,
+      actorRole: user?.role ?? null,
+      resourceType: "USER",
+      resourceId: user?.id ?? null,
+      metadata: { category: "INVALID_CREDENTIALS" }
+    });
     throw invalidCredentialsError();
   }
 
@@ -69,6 +78,14 @@ export async function loginProfessionalUser(
     (user.role === UserRole.DOCTOR || user.role === UserRole.PHARMACIST) &&
     !user.isVerified
   ) {
+    await recordAuditEventSafe({
+      eventType: "LOGIN_FAILURE",
+      actorUserId: user.id,
+      actorRole: user.role,
+      resourceType: "USER",
+      resourceId: user.id,
+      metadata: { category: "ACCOUNT_NOT_APPROVED" }
+    });
     throw new AppError(
       403,
       "ACCOUNT_NOT_APPROVED",
@@ -76,19 +93,33 @@ export async function loginProfessionalUser(
     );
   }
 
+  // Phase 6.11: OWNER joins the management-login whitelist alongside the
+  // existing operational roles. PATIENT and DELIVERY_AGENT remain excluded:
+  // patients use OTP and delivery agents have no management surface.
   if (
     user.role !== UserRole.DOCTOR &&
     user.role !== UserRole.PHARMACIST &&
-    user.role !== UserRole.OPS_ADMIN
+    user.role !== UserRole.OPS_ADMIN &&
+    user.role !== UserRole.OWNER
   ) {
     throw invalidCredentialsError();
   }
 
   const tokenPayload = { userId: user.id, role: user.role };
 
+  await recordAuditEventSafe({
+    eventType: "LOGIN_SUCCESS",
+    actorUserId: user.id,
+    actorRole: user.role,
+    resourceType: "USER",
+    resourceId: user.id
+  });
+
   return {
     accessToken: generateAccessToken(tokenPayload),
-    refreshToken: generateRefreshToken(tokenPayload),
+    // Stateful rotating refresh credential; the legacy signed refresh JWT is
+    // no longer issued (see refresh-session.service.ts).
+    refreshToken: await issueRefreshSession(user.id, user.role),
     user: {
       id: user.id,
       fullName: user.fullName,

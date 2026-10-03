@@ -13,6 +13,7 @@ enum UserRole {
   PHARMACIST
   OPS_ADMIN
   DELIVERY_AGENT
+  OWNER
 }
 
 enum CartStatus {
@@ -204,6 +205,11 @@ enum PatientStoryStatus {
   REJECTED
 }
 
+enum TestimonialType {
+  IMAGE
+  VIDEO
+}
+
 enum ChatSessionStatus {
   ACTIVE
   ESCALATED
@@ -226,6 +232,63 @@ enum ChatMessageSender {
   PATIENT
   ROUTER
   SYSTEM
+}
+
+enum AuditEventType {
+  // Authentication & session lifecycle
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  OTP_REQUESTED
+  OTP_VERIFICATION_FAILED
+  LOGOUT
+  REFRESH_TOKEN_ROTATED
+  REFRESH_TOKEN_REJECTED
+  SESSIONS_REVOKED
+  // Pharmacy / prescriptions / orders
+  PRESCRIPTION_SUBMITTED
+  PRESCRIPTION_VERIFIED
+  PRESCRIPTION_REJECTED
+  PRESCRIPTION_QUERIED
+  ORDER_CREATED
+  PAYMENT_INITIATED
+  PAYMENT_VERIFIED
+  DELIVERY_ASSIGNED
+  DELIVERY_COMPLETED
+  DELIVERY_FAILED
+  // Referrals
+  REFERRAL_CREATED
+  REFERRAL_STATUS_CHANGED
+  // Consultations
+  APPOINTMENT_CREATED
+  APPOINTMENT_STATUS_CHANGED
+  // Labs
+  LAB_BOOKING_CREATED
+  LAB_BOOKING_STATUS_CHANGED
+  LAB_REPORT_UPLOADED
+  // PAP
+  PAP_APPLICATION_CREATED
+  PAP_STATUS_CHANGED
+  // Testimonials
+  TESTIMONIAL_CREATED
+  TESTIMONIAL_UPDATED
+  TESTIMONIAL_PUBLISHED
+  TESTIMONIAL_UNPUBLISHED
+  TESTIMONIAL_MEDIA_REPLACED
+  TESTIMONIAL_DELETED
+  // Content & admin/ops mutations
+  TRIAL_CREATED
+  TRIAL_UPDATED
+  TRIAL_PUBLISHED
+  TRIAL_INTEREST_STATUS_CHANGED
+  STORY_CREATED
+  STORY_UPDATED
+  STORY_STATUS_CHANGED
+  STORY_PUBLISHED
+  STORY_PHOTO_REPLACED
+  KNOWLEDGE_ARTICLE_CREATED
+  KNOWLEDGE_ARTICLE_UPDATED
+  KNOWLEDGE_ARTICLE_PUBLISHED
+  PRODUCT_IMPORT_COMPLETED
 }
 
 enum AnalyticsEventName {
@@ -289,6 +352,8 @@ model User {
   uploadedDeliveryProofs   DeliveryProof[]      @relation("DeliveryProofUploader")
   chatSessions             ChatSession[]        @relation("PatientChatSessions")
   analyticsEvents          AnalyticsEvent[]     @relation("AnalyticsEventUser")
+  refreshSessions          RefreshSession[]      @relation("RefreshSessionUser")
+  auditEvents              AuditEvent[]          @relation("AuditEventActor")
 
   @@index([role])
   @@map("users")
@@ -430,6 +495,9 @@ model Order {
   @@index([patientId])
   @@index([status])
   @@index([deliveryPincode])
+  // Serves the Phase 5.0 demand aggregation: orders filtered by status and a
+  // bounded created_at range before joining order_items.
+  @@index([status, createdAt])
   @@map("orders")
 }
 
@@ -814,6 +882,27 @@ model PatientStory {
   @@map("patient_stories")
 }
 
+model Testimonial {
+  id                String          @id @default(uuid()) @db.Uuid
+  type              TestimonialType
+  title             String
+  description       String
+  displayName       String          @map("display_name")
+  displayOrder      Int             @default(0) @map("display_order")
+  published         Boolean         @default(false)
+  publishedAt       DateTime?       @map("published_at")
+  mediaStorageKey   String?         @map("media_storage_key")
+  mediaDocumentName String?         @map("media_document_name")
+  mediaMimeType     String?         @map("media_mime_type")
+  mediaChecksum     String?         @map("media_checksum")
+  mediaUploadedAt   DateTime?       @map("media_uploaded_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  @@index([published, displayOrder, createdAt])
+  @@map("testimonials")
+}
+
 model ChatSession {
   id        String            @id @default(uuid()) @db.Uuid
   patientId String            @map("patient_id") @db.Uuid
@@ -844,6 +933,38 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+/**
+ * Append-oriented security and business-action audit trail (Phase 4.7).
+ *
+ * Records who performed an operationally or security-sensitive action, on
+ * which resource, when, and with which request correlation ID. Records are
+ * created only by the backend service layer (never by client input) and are
+ * not exposed to create/update/delete through normal application APIs; the
+ * only read path is the OPS_ADMIN audit endpoint.
+ *
+ * Deliberately distinct from AnalyticsEvent: analytics records product and
+ * funnel metrics; audit records accountability for sensitive actions.
+ */
+model AuditEvent {
+  id           String         @id @default(uuid()) @db.Uuid
+  eventType    AuditEventType @map("event_type")
+  actorUserId  String?        @map("actor_user_id") @db.Uuid
+  actorRole    String?        @map("actor_role")
+  resourceType String         @map("resource_type")
+  resourceId   String?        @map("resource_id") @db.Uuid
+  requestId    String?        @map("request_id") @db.VarChar(64)
+  metadata     Json?
+  createdAt    DateTime       @default(now()) @map("created_at")
+  actor        User?          @relation("AuditEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([resourceType, resourceId])
+  @@index([eventType, createdAt])
+  @@index([requestId])
+  @@map("audit_events")
+}
+
 model AnalyticsEvent {
   id         String             @id @default(uuid()) @db.Uuid
   eventName  AnalyticsEventName @map("event_name")
@@ -859,6 +980,20 @@ model AnalyticsEvent {
   @@index([userId, createdAt])
   @@index([entityType, entityId])
   @@map("analytics_events")
+}
+
+model RefreshSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at")
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  user           User      @relation("RefreshSessionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_sessions")
 }
 
 model PatientOtpChallenge {

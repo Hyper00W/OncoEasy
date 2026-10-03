@@ -8,6 +8,7 @@ import { toAdminStory, toPublicStory } from "./stories.mapper";
 import { normalizeStoryPhotoName, validateStoryPhoto } from "./stories.storage";
 import type { CreateStoryInput, StoryListQuery, UpdateStoryInput, UpdateStoryStatusInput } from "./stories.schemas";
 import { recordAnalyticsEvent } from "../analytics/analytics.events";
+import { recordAuditEvent } from "../../observability/audit";
 
 const publicSelect = { id: true, displayName: true, story: true, photoStorageKey: true, photoDocumentName: true, photoMimeType: true, consentGiven: true, status: true, isPublished: true, publishedAt: true, createdAt: true, updatedAt: true } as const;
 const adminInclude = { createdBy: { select: { id: true, fullName: true } }, updatedBy: { select: { id: true, fullName: true } } } as const;
@@ -57,7 +58,22 @@ export async function updateStoryStatus(adminId: string, storyId: string, input:
   const existing = await prisma.patientStory.findUnique({ where: { id: storyId }, select: { status: true } });
   if (!existing) throw new AppError(404, "PATIENT_STORY_NOT_FOUND", "Patient story was not found");
   assertTransition(existing.status, input.status);
-  const story = await prisma.patientStory.update({ where: { id: storyId }, data: { status: input.status, updatedById: adminId, ...(input.status !== PatientStoryStatus.APPROVED ? { isPublished: false, publishedAt: null } : {}) }, include: adminInclude });
+  // Conditional transition: only a row still in the source status is updated,
+  // so concurrent admins cannot interleave contradictory statuses.
+  const transitioned = await prisma.patientStory.updateMany({
+    where: { id: storyId, status: existing.status },
+    data: { status: input.status, updatedById: adminId, ...(input.status !== PatientStoryStatus.APPROVED ? { isPublished: false, publishedAt: null } : {}) }
+  });
+  if (transitioned.count === 0) throw new AppError(409, "PATIENT_STORY_STATUS_CONFLICT", "Patient story status transition is not valid");
+  const story = await prisma.patientStory.findUniqueOrThrow({ where: { id: storyId }, include: adminInclude });
+  await recordAuditEvent(prisma, {
+    eventType: "STORY_STATUS_CHANGED",
+    actorUserId: adminId,
+    actorRole: "OPS_ADMIN",
+    resourceType: "PATIENT_STORY",
+    resourceId: storyId,
+    metadata: { from: existing.status, to: input.status }
+  });
   return toAdminStory(story);
 }
 
@@ -69,6 +85,13 @@ export async function publishStory(adminId: string, storyId: string, isPublished
   const story = await prisma.$transaction(async (transaction) => {
     const updated = await transaction.patientStory.update({ where: { id: storyId }, data: { isPublished, publishedAt: isPublished ? new Date() : null, updatedById: adminId }, include: adminInclude });
     if (isPublished) await recordAnalyticsEvent(transaction, "PATIENT_STORY_PUBLISHED", { userId: adminId, entityType: "PATIENT_STORY", entityId: storyId });
+    await recordAuditEvent(transaction, {
+      eventType: isPublished ? "STORY_PUBLISHED" : "STORY_UPDATED",
+      actorUserId: adminId,
+      actorRole: "OPS_ADMIN",
+      resourceType: "PATIENT_STORY",
+      resourceId: storyId
+    });
     return updated;
   });
   return toAdminStory(story);
@@ -84,6 +107,13 @@ export async function uploadStoryPhoto(adminId: string, storyId: string, file: E
   try {
     const story = await prisma.patientStory.update({ where: { id: storyId }, data: { photoStorageKey: uploaded.key, photoDocumentName: normalizeStoryPhotoName(file.originalname), photoMimeType: type.mimeType, photoChecksum: createHash("sha256").update(file.buffer).digest("hex"), photoUploadedAt: new Date(), updatedById: adminId }, include: adminInclude });
     if (existing.photoStorageKey) await deletePrivateObject(existing.photoStorageKey);
+    await recordAuditEvent(prisma, {
+      eventType: "STORY_PHOTO_REPLACED",
+      actorUserId: adminId,
+      actorRole: "OPS_ADMIN",
+      resourceType: "PATIENT_STORY",
+      resourceId: storyId
+    });
     return toAdminStory(story);
   } catch (error) { await deletePrivateObject(uploaded.key); throw error; }
 }

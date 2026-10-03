@@ -15,6 +15,6 @@ orderRouter.get("/", listOrders);
 orderRouter.get("/:orderId", validateRequest({ params: orderParamsSchema }), getOrder);
 
 export const adminOrderRouter = Router();
-adminOrderRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminOrderRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminOrderRouter.get("/", validateRequest({ query: adminOrderListQuerySchema }), listAdmin);
 adminOrderRouter.get("/:orderId", validateRequest({ params: orderParamsSchema }), getAdmin);

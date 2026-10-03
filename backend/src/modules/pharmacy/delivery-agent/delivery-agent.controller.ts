@@ -15,7 +15,7 @@ import { proofTypeSchema, type AdminDeliveryListQuery } from "./delivery-agent.s
 
 export const assignDelivery: RequestHandler = async (request, response, next) => {
   try {
-    response.status(200).json({ success: true, data: await assignLocalDelivery(request.params.deliveryId as string, request.body) });
+    response.status(200).json({ success: true, data: await assignLocalDelivery(request.params.deliveryId as string, request.body, request.user?.userId as string | undefined, request.user?.role as string | undefined) });
   } catch (error) { next(error); }
 };
 

@@ -1,0 +1,357 @@
+/* ==========================================================================
+   OncoEasy patient website layer (Phase 7)
+   --------------------------------------------------------------------------
+   Page-level polish for the patient portal: the journey storytelling block,
+   the shared surface finish, chat, auth, and a zero-JS scroll-reveal that
+   works on browsers with scroll-driven animations.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Homepage promo carousel
+   The carousel paints a deep navy band, so its kicker has to be the light
+   amber from the brand palette. The dark-surface amber (--amber-700) used by
+   the same `.yellow-text` kicker on light sections is unreadable there
+   (~1.8:1); the light amber clears AA on navy (~5.7:1).
+   -------------------------------------------------------------------------- */
+
+.promo-carousel-wrap .eyebrow.yellow-text {
+  color: var(--amber-500);
+}
+
+/* --------------------------------------------------------------------------
+   Shared surface finish
+   -------------------------------------------------------------------------- */
+
+.panel,
+.list-card,
+.editorial-card,
+.care-panel {
+  border-color: var(--line);
+}
+
+.panel {
+  box-shadow: var(--shadow-xs);
+}
+
+.panel-fluid h2,
+.care-panel h2 {
+  letter-spacing: -0.015em;
+}
+
+/* Section intros read as one editorial block, not a boxed card. */
+.page-intro {
+  border-radius: var(--radius-xl);
+}
+
+/* --------------------------------------------------------------------------
+   Care journey
+   -------------------------------------------------------------------------- */
+
+.journey-progress-summary {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: var(--shadow-xs);
+}
+
+.journey-loading {
+  display: grid;
+  gap: 12px;
+  padding: var(--space-5) 0;
+}
+
+.journey-loading .skeleton {
+  display: block;
+  height: 74px;
+  border-radius: var(--radius-lg);
+}
+
+.journey-timeline-card {
+  display: block;
+  padding: clamp(22px, 3vw, 32px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(180deg, #ffffff, #fbfdfd 70%, #f7fbfa);
+  box-shadow: var(--shadow-sm);
+}
+
+.journey-timeline-head {
+  margin-bottom: 22px;
+}
+
+.journey-timeline-head h2 {
+  margin-bottom: 8px;
+  font-size: clamp(1.3rem, 2.3vw, 1.7rem);
+}
+
+.journey-timeline-head p {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.journey-current-panel .journey-stage-here {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--teal-600);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.journey-checklist {
+  margin: 4px 0 18px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.journey-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px 9px 14px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* The dot is a flex sibling of the label, so it stays vertically centered
+   on the row instead of floating above the text. `position: static` and the
+   explicit offsets neutralize index.css's absolute top/left/transform rules
+   (the cascade is per-property, so they must be overridden, not removed). */
+.journey-checklist li::before {
+  content: "";
+  position: static;
+  transform: none;
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--teal-600);
+  box-shadow: 0 0 0 4px rgba(0, 169, 157, 0.13);
+}
+
+/* --------------------------------------------------------------------------
+   Chat — a premium care-support desk
+   -------------------------------------------------------------------------- */
+
+.chat-shell,
+.chat-page-shell {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.chat-bubble {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.chat-bubble-support {
+  border: 1px solid var(--line);
+}
+
+.chat-bubble-meta {
+  letter-spacing: 0.02em;
+}
+
+.chat-composer,
+.chat-input-area {
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+@keyframes oe-typing {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.42; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typing-dot {
+  animation: oe-typing 1200ms var(--motion-ease-soft) infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 140ms; }
+.typing-dot:nth-child(3) { animation-delay: 280ms; }
+
+/* Mobile: keep the composer above the keyboard and clear of safe areas. */
+@media (max-width: 720px) {
+  .chat-composer,
+  .chat-input-area {
+    position: sticky;
+    bottom: 0;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 2;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Auth / onboarding
+   -------------------------------------------------------------------------- */
+
+.auth-illustration,
+.auth-panel-visual {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.otp-digit-box,
+.otp-input {
+  transition:
+    border-color 200ms var(--motion-ease-out),
+    box-shadow 200ms var(--motion-ease-out),
+    transform 160ms var(--motion-ease-out);
+}
+
+.otp-digit-box:focus-within {
+  transform: translateY(-1px);
+}
+
+.onboarding-step {
+  transition: opacity 280ms var(--motion-ease-out);
+}
+
+/* --------------------------------------------------------------------------
+   Zero-JS scroll reveal
+   Browsers with scroll-driven animations get the composed "sections rise as
+   they enter" behaviour without a single line of JavaScript, no wrapper DOM
+   and no scroll listeners. Everything else renders exactly as before.
+   -------------------------------------------------------------------------- */
+
+@keyframes oe-scroll-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .site-main > section,
+    .patient-shell-body > section,
+    .site-main > .site-section,
+    .site-main > .support-cta {
+      animation: oe-scroll-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 42%;
+    }
+
+    /* The hero is the LCP block: it must paint immediately, never on scroll. */
+    .site-main > .hero-section,
+    .site-main > .page-hero,
+    .patient-shell-body > .page-hero,
+    .site-main > :first-child {
+      animation: none;
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .journey-page-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .journey-timeline-card {
+    padding: 18px 14px;
+  }
+
+  .journey-progress-summary {
+    padding: 8px 13px;
+    font-size: 12.5px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Mobile touch targets
+   Standalone controls must clear the WCAG 2.2 minimum target size. Links that
+   sit inside a sentence are exempt and are deliberately left alone.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .text-link,
+  .link-button,
+  .results-clear,
+  .footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .footer-links a {
+    padding: 4px 0;
+  }
+
+  .circle-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Hero search suggestions and the prescription CTA are standalone controls,
+     so they get a real 44px row on touch devices. */
+  .search-hints button,
+  .hero-prescription button {
+    min-height: 44px;
+  }
+
+  /* Breadcrumb links are their own navigation targets, not inline prose. */
+  .breadcrumbs a,
+  .breadcrumbs span {
+    display: inline-block;
+    padding: 4px 0;
+  }
+
+  /* Carousel dots keep their 10px visual but the button itself is a 24px
+     target, so neighbouring dots never overlap and every dot is tappable. */
+  .carousel-dots {
+    gap: 10px;
+  }
+
+  .carousel-dot {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: transparent;
+  }
+
+  .carousel-dot::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+  }
+
+  .carousel-dot.active {
+    width: 40px;
+    border-radius: var(--radius-pill);
+    background: transparent;
+  }
+
+  .carousel-dot.active::before {
+    inset: 7px 0;
+    border-radius: var(--radius-pill);
+    background: var(--amber-500);
+  }
+}

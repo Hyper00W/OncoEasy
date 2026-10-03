@@ -2,7 +2,22 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
+import { PatientPageShell } from "../shell/PatientPageShell";
+import {
+  Alert,
+  BackLink,
+  Button,
+  EmptyState,
+  FeatureCard,
+  Field,
+  Input,
+  LoadingState,
+  PageHero,
+  Panel,
+  UploadZone
+} from "../components/ui";
+import { DocumentIcon, ShieldHeartIcon, SupportIcon } from "../components/icons";
+import { StatusChip } from "../components/StatusChip";
 import {
   createPapApplication,
   getPapApplication,
@@ -50,19 +65,31 @@ export function PatientPAPPage({ navigate }: { navigate: Navigate }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     Promise.all([listPapPrograms(), listPapApplications()])
       .then(([programResponse, applicationResponse]) => {
+        if (cancelled) return;
         setPrograms(programResponse);
         setApplications(applicationResponse);
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
+      .catch((requestError: unknown) => {
+        if (!cancelled) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function leave(): void {
     signOut();
     navigate("/");
   }
+  void leave;
 
   function refreshApplications(): void {
     listPapApplications()
@@ -95,7 +122,7 @@ export function PatientPAPPage({ navigate }: { navigate: Navigate }) {
 
   function submitApplication(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (!selectedProgram) return;
+    if (!selectedProgram || submitting) return;
 
     setSubmitting(true);
     setError(null);
@@ -113,7 +140,7 @@ export function PatientPAPPage({ navigate }: { navigate: Navigate }) {
 
   function uploadDocument(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (!selectedApplication || !document) return;
+    if (!selectedApplication || !document || uploading) return;
 
     setUploading(true);
     setError(null);
@@ -132,36 +159,52 @@ export function PatientPAPPage({ navigate }: { navigate: Navigate }) {
   if (!user) return null;
 
   return (
-    <main className="workspace-page pap-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Patient support</p>
-          <h1>PAP Navigator</h1>
-          <p className="intro">Review available support programs and submit information for manual operations review.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
+    <PatientPageShell navigate={navigate} activePath="/patient/pap" className="pap-page"
+      backSlot={<BackLink navigate={navigate} fallback="/patient" label="Back to dashboard" />}>
+      <PageHero
+        tone="cream"
+        eyebrow="Patient support"
+        title="Patient assistance programs,"
+        highlight="care beyond cost."
+        description="Patient assistance programs can reduce the cost of long-term therapy. Explore available programs, apply with guided steps, and track your review."
+        image="/assets/banner/patient-care.jpg"
+        imageAlt="A care provider supporting a patient"
+        badge={
+          <>
+            <ShieldHeartIcon size={16} /> Confidential Review
+          </>
+        }
+        crumbs={[
+          { label: "Dashboard", href: "/patient" },
+          { label: "Patient assistance" }
+        ]}
+      />
 
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <div className="success-message" role="status">{notice}</div> : null}
 
       {loading ? <LoadingState label="Loading PAP programs..." /> : (
         <section className="pap-grid">
-          <Panel>
+          <Panel className="panel-fluid">
             <h2>Available programs</h2>
-            {programs.length === 0 ? <p className="empty-state">No support programs are available right now.</p> : (
-              <div className="stack-list">
+            {programs.length === 0 ? (
+              <EmptyState icon={<ShieldHeartIcon size={22} />} title="No support programs are available right now" hint="New assistance programs will appear here as they become available." />
+            ) : (
+              <div className="pap-program-grid">
                 {programs.map((program) => (
-                  <div className="list-row" key={program.programId}>
-                    <div>
-                      <strong>{program.name}</strong>
-                      <span className="muted">{program.description}</span>
-                    </div>
-                    <div className="button-row">
-                      <Button className="button-secondary" type="button" onClick={() => openProgram(program.programId)}>Details</Button>
-                      <Button type="button" onClick={() => selectProgram(program)}>Apply</Button>
-                    </div>
-                  </div>
+                  <FeatureCard
+                    key={program.programId}
+                    icon={<ShieldHeartIcon size={20} />}
+                    tone="teal"
+                    title={program.name}
+                    description={program.description}
+                    action={
+                      <div className="button-row">
+                        <Button className="button-secondary" type="button" onClick={() => openProgram(program.programId)}>Details</Button>
+                        <Button type="button" onClick={() => selectProgram(program)}>Apply</Button>
+                      </div>
+                    }
+                  />
                 ))}
               </div>
             )}
@@ -180,9 +223,11 @@ export function PatientPAPPage({ navigate }: { navigate: Navigate }) {
             </Panel>
           ) : null}
 
-          <Panel>
+          <Panel className="panel-fluid">
             <h2>My applications</h2>
-            {applications.length === 0 ? <p className="empty-state">You have not submitted a PAP application.</p> : (
+            {applications.length === 0 ? (
+              <EmptyState icon={<DocumentIcon size={22} />} title="You have not submitted a PAP application" hint="Explore the programs and apply — your application status will be tracked here." />
+            ) : (
               <div className="stack-list">
                 {applications.map((application) => (
                   <button className="list-row list-row-button" type="button" key={application.applicationId} onClick={() => openApplication(application.applicationId)}>
@@ -190,7 +235,7 @@ export function PatientPAPPage({ navigate }: { navigate: Navigate }) {
                       <strong>{application.program.name}</strong>
                       <span className="muted">Submitted {formatDate(application.createdAt)}</span>
                     </div>
-                    <span className={`status status-${application.status.toLowerCase()}`}>{formatStatus(application.status)}</span>
+                    <StatusChip status={application.status} />
                   </button>
                 ))}
               </div>
@@ -214,17 +259,29 @@ export function PatientPAPPage({ navigate }: { navigate: Navigate }) {
             </Panel>
           ) : null}
 
-          {selectedApplication ? <ApplicationDetail application={selectedApplication} document={document} uploading={uploading} onDocumentChange={setDocument} onUpload={uploadDocument} onClose={() => setSelectedApplication(null)} /> : null}
+          {selectedApplication ? (
+            <ApplicationDetail application={selectedApplication} document={document} uploading={uploading} onDocumentChange={setDocument} onUpload={uploadDocument} onClose={() => setSelectedApplication(null)} />
+          ) : null}
         </section>
       )}
-    </main>
+
+      <section className="cta-section section-cream" aria-label="Need help with assistance programs">
+        <div>
+          <h2>Need help with an application?</h2>
+          <p>Our patient support desk can walk you through eligibility, documents, and program timelines.</p>
+        </div>
+        <Button type="button" onClick={() => navigate("/patient/chat")}>
+          <SupportIcon size={16} /> Contact patient support
+        </Button>
+      </section>
+    </PatientPageShell>
   );
 }
 
 function ApplicationDetail({ application, document, uploading, onDocumentChange, onUpload, onClose }: { application: PapApplication; document: File | null; uploading: boolean; onDocumentChange: (file: File | null) => void; onUpload: (event: React.FormEvent<HTMLFormElement>) => void; onClose: () => void }) {
   return (
     <Panel>
-      <div className="detail-header"><div><h2>Application details</h2><p className="muted">{application.program.name}</p></div><span className={`status status-${application.status.toLowerCase()}`}>{formatStatus(application.status)}</span></div>
+      <div className="detail-header"><div><h2>Application details</h2><p className="muted">{application.program.name}</p></div><StatusChip status={application.status} /></div>
       <dl className="detail-list">
         <dt>Submitted</dt><dd>{formatDate(application.createdAt)}</dd>
         <dt>Address</dt><dd>{application.applicationData.address}</dd>
@@ -236,7 +293,20 @@ function ApplicationDetail({ application, document, uploading, onDocumentChange,
       {application.reviewNotes ? <p className="muted">Review notes: {application.reviewNotes}</p> : null}
       <h3>Documents</h3>
       {application.documents.length === 0 ? <p className="empty-state">No documents uploaded yet.</p> : <div className="stack-list">{application.documents.map((item) => <div className="list-row" key={item.documentId}><div><strong>{item.documentName}</strong><span className="muted">{item.mimeType} • {formatDate(item.uploadedAt)}</span></div></div>)}</div>}
-      {application.status !== "REJECTED" && application.status !== "COMPLETED" ? <form className="form-stack" onSubmit={onUpload}><Field label="Upload supporting document" htmlFor="pap-document"><Input id="pap-document" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={(event) => onDocumentChange(event.target.files?.[0] ?? null)} required /></Field><Button type="submit" disabled={!document || uploading}>{uploading ? "Uploading..." : "Upload document"}</Button></form> : null}
+      {application.status !== "REJECTED" && application.status !== "COMPLETED" ? (
+        <form className="form-stack" onSubmit={onUpload}>
+          <UploadZone
+            id="pap-document"
+            label="Select a supporting document"
+            hint="PDF, JPG, PNG, or WebP — prescriptions, income proof, or identity documents"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            file={document}
+            onChange={onDocumentChange}
+            required
+          />
+          <Button type="submit" disabled={!document || uploading}>{uploading ? "Uploading..." : "Upload document"}</Button>
+        </form>
+      ) : null}
       <Button className="button-secondary" type="button" onClick={onClose}>Close details</Button>
     </Panel>
   );
@@ -249,10 +319,6 @@ function formatRequirements(value: unknown): string {
 function formatDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
-}
-
-function formatStatus(value: string): string {
-  return value.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
 
 function getErrorMessage(error: unknown): string {

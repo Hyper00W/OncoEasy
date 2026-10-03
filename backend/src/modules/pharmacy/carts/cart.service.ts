@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "../../../database/prisma";
 import { AppError } from "../../../errors/app-error";
 import type { CartItemInput, CartItemQuantityInput } from "./cart.schemas";
@@ -39,46 +41,63 @@ export async function getActiveCart(patientId: string) {
 
 export async function addCartItem(patientId: string, input: CartItemInput) {
   const cart = await prisma.$transaction(async (transaction) => {
-    const product = await findActiveProduct(transaction, input.productId);
-    assertMinimumQuantity(input.quantity, product.minimumQuantity);
+    await addCartItemInTransaction(transaction, patientId, input.productId, input.quantity);
 
-    let activeCart = await transaction.cart.findFirst({
+    const activeCart = await transaction.cart.findFirst({
       where: { patientId, status: "ACTIVE" },
       orderBy: { createdAt: "asc" }
     });
-
-    if (!activeCart) {
-      activeCart = await transaction.cart.create({
-        data: { patientId, currency: product.currency },
-        include: cartInclude
-      });
-    }
-
-    const existingItem = await transaction.cartItem.findUnique({
-      where: { cartId_productId: { cartId: activeCart.id, productId: product.id } }
-    });
-    const quantity = (existingItem?.quantity ?? 0) + input.quantity;
-
-    assertMinimumQuantity(quantity, product.minimumQuantity);
-    await transaction.cartItem.upsert({
-      where: { cartId_productId: { cartId: activeCart.id, productId: product.id } },
-      create: {
-        cartId: activeCart.id,
-        productId: product.id,
-        quantity,
-        unitPriceSnapshot: product.price,
-        productNameSnapshot: product.name
-      },
-      update: { quantity }
-    });
-
     return transaction.cart.findUniqueOrThrow({
-      where: { id: activeCart.id },
+      where: { id: activeCart!.id },
       include: cartInclude
     });
   });
 
   return toCartResponse(cart);
+}
+
+/**
+ * Transaction-scoped cart item addition. Shared by the cart API and the
+ * referral → cart flow so a multi-item referral add is all-or-nothing instead
+ * of committing item-by-item in independent transactions.
+ */
+export async function addCartItemInTransaction(
+  transaction: Prisma.TransactionClient,
+  patientId: string,
+  productId: string,
+  quantity: number
+) {
+  const product = await findActiveProduct(transaction, productId);
+  assertMinimumQuantity(quantity, product.minimumQuantity);
+
+  let activeCart = await transaction.cart.findFirst({
+    where: { patientId, status: "ACTIVE" },
+    orderBy: { createdAt: "asc" }
+  });
+
+  if (!activeCart) {
+    activeCart = await transaction.cart.create({
+      data: { patientId, currency: product.currency }
+    });
+  }
+
+  const existingItem = await transaction.cartItem.findUnique({
+    where: { cartId_productId: { cartId: activeCart.id, productId: product.id } }
+  });
+  const totalQuantity = (existingItem?.quantity ?? 0) + quantity;
+
+  assertMinimumQuantity(totalQuantity, product.minimumQuantity);
+  await transaction.cartItem.upsert({
+    where: { cartId_productId: { cartId: activeCart.id, productId: product.id } },
+    create: {
+      cartId: activeCart.id,
+      productId: product.id,
+      quantity: totalQuantity,
+      unitPriceSnapshot: product.price,
+      productNameSnapshot: product.name
+    },
+    update: { quantity: totalQuantity }
+  });
 }
 
 export async function updateCartItem(

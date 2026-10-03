@@ -1,0 +1,910 @@
+/* ==========================================================================
+   DEMAND FORECAST ENGINE — premium analytics workspace (Phase 8)
+   --------------------------------------------------------------------------
+   Loaded after the Phase 7 layer stack, so these rules are authoritative for
+   the `dfe-*` / `dfc-*` namespaces they introduce. Motion follows the shared
+   language in styles/motion.css; every animated pattern is neutralised under
+   prefers-reduced-motion.
+   ========================================================================== */
+
+:root {
+  --dfe-ink: #102b48;
+  --dfe-teal: var(--teal-600, #00a99d);
+  --dfe-teal-deep: #006b62;
+  --dfe-navy: var(--brand-800, #0c2947);
+  --dfe-amber: var(--amber-500, #f6b52f);
+  --dfe-line: rgba(12, 41, 71, 0.12);
+  --dfe-surface: #ffffff;
+  --dfe-sunken: #f7faf9;
+}
+
+/* ------------------------------------------------------------------ */
+/* Hero / command center                                              */
+/* ------------------------------------------------------------------ */
+
+.dfe-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--dfe-line);
+  border-radius: var(--radius-xl, 20px);
+  background:
+    radial-gradient(1100px 320px at 12% -40%, rgba(0, 169, 157, 0.16), transparent 62%),
+    radial-gradient(900px 300px at 105% -30%, rgba(18, 58, 92, 0.14), transparent 60%),
+    linear-gradient(180deg, #082036 0%, var(--dfe-navy) 58%, #17425a 100%);
+  color: #ffffff;
+  box-shadow: 0 24px 60px -34px rgba(10, 32, 52, 0.55);
+}
+
+.dfe-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(2.2px 2.2px at 18% 62%, rgba(255, 255, 255, 0.16), transparent 60%),
+    radial-gradient(2px 2px at 74% 34%, rgba(255, 255, 255, 0.12), transparent 60%),
+    radial-gradient(2.4px 2.4px at 48% 82%, rgba(255, 255, 255, 0.10), transparent 60%);
+  animation: dfe-ambience 9s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes dfe-ambience {
+  from { opacity: 0.55; transform: translate3d(0, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, -6px, 0); }
+}
+
+.dfe-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 40px 36px 34px;
+}
+
+.dfe-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--radius-pill, 999px);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.dfe-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4fe3c1;
+  box-shadow: 0 0 0 4px rgba(79, 227, 193, 0.18);
+  animation: dfe-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes dfe-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.dfe-hero-title {
+  /* Explicit white: the global `h1 { color: var(--ink) }` base rule would
+     otherwise put dark ink on this dark navy hero (the "blending" bug). */
+  margin: 0 0 10px;
+  color: #ffffff;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+  animation: dfe-rise 640ms var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.dfe-hero-accent {
+  background: linear-gradient(92deg, #4fe3c1, #8fd7ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* Gradient-clipped text keeps #fff as the fallback color; without an
+     explicit value the ink-colour cascade above wins instead. */
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not (-webkit-background-clip: text) {
+  .dfe-hero-accent {
+    color: #4fe3c1;
+    -webkit-text-fill-color: #4fe3c1;
+  }
+}
+
+.dfe-hero-copy {
+  max-width: 640px;
+  margin: 0 0 22px;
+  color: rgba(240, 249, 247, 0.88);
+  font-size: 15.5px;
+  line-height: 1.6;
+  animation: dfe-rise 640ms var(--motion-ease-out) 80ms both;
+}
+
+@keyframes dfe-rise {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.dfe-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 34px;
+  margin: 0;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  animation: dfe-rise 640ms var(--motion-ease-out) 150ms both;
+}
+
+.dfe-hero-meta > div {
+  min-width: 130px;
+}
+
+.dfe-hero-meta dt {
+  color: rgba(219, 240, 235, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dfe-hero-meta dd {
+  margin: 4px 0 0;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dfe-horizon-pills {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-pill, 999px);
+  background: rgba(10, 26, 40, 0.45);
+}
+
+.dfe-horizon-pill {
+  padding: 5px 14px;
+  border: 0;
+  border-radius: var(--radius-pill, 999px);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 200ms var(--motion-ease-out, ease), color 200ms var(--motion-ease-out, ease);
+}
+
+.dfe-horizon-pill:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dfe-horizon-pill.is-active {
+  background: var(--dfe-teal);
+  color: #ffffff;
+}
+
+.dfe-horizon-pill:focus-visible {
+  outline: 2px solid #8fd7ff;
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* KPI grid                                                           */
+/* ------------------------------------------------------------------ */
+
+.dfe-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.dfe-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--dfe-line);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--dfe-surface);
+  box-shadow: 0 1px 2px rgba(16, 38, 59, 0.05), 0 10px 26px -18px rgba(16, 38, 59, 0.35);
+  opacity: 0;
+  transform: translate3d(0, 10px, 0);
+  transition: opacity 480ms var(--motion-ease-out, ease), transform 480ms var(--motion-ease-out, ease), box-shadow 200ms ease;
+}
+
+.dfe-kpi.is-entered {
+  opacity: 1;
+  transform: none;
+}
+
+.dfe-kpi:hover {
+  box-shadow: 0 2px 4px rgba(16, 38, 59, 0.06), 0 16px 34px -18px rgba(16, 38, 59, 0.45);
+}
+
+/* Gentle lift on hover (base transition already covers transform). */
+.dfe-kpi.is-entered:hover {
+  transform: translate3d(0, -3px, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dfe-kpi.is-entered:hover {
+    transform: none;
+  }
+}
+
+.dfe-kpi[data-reduced="true"] {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.dfe-kpi:nth-child(1) { transition-delay: 0ms; }
+.dfe-kpi:nth-child(2) { transition-delay: 50ms; }
+.dfe-kpi:nth-child(3) { transition-delay: 100ms; }
+.dfe-kpi:nth-child(4) { transition-delay: 150ms; }
+.dfe-kpi:nth-child(5) { transition-delay: 200ms; }
+.dfe-kpi:nth-child(6) { transition-delay: 250ms; }
+
+.dfe-kpi-label {
+  color: var(--dfe-ink);
+  opacity: 0.66;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dfe-kpi-value {
+  color: var(--dfe-navy);
+  font-size: 30px;
+  font-weight: 780;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.dfe-kpi-amber .dfe-kpi-value { color: #9a6214; }
+.dfe-kpi-navy .dfe-kpi-value { color: var(--dfe-navy); }
+
+.dfe-count-suffix {
+  margin-left: 4px;
+  font-size: 0.52em;
+  font-weight: 650;
+  opacity: 0.7;
+}
+
+.dfe-kpi-detail {
+  color: var(--dfe-ink);
+  opacity: 0.62;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.dfe-kpi .dfc-spark {
+  margin-top: 2px;
+}
+
+/* Sparkline */
+.dfc-spark {
+  width: 100%;
+  max-width: 130px;
+  height: 34px;
+}
+
+.dfc-spark-line {
+  fill: none;
+  stroke: var(--dfe-teal);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.dfc-spark-area {
+  fill: rgba(0, 169, 157, 0.12);
+}
+
+.dfc-spark-amber .dfc-spark-line { stroke: var(--dfe-amber); }
+.dfc-spark-amber .dfc-spark-area { fill: rgba(232, 161, 61, 0.14); }
+
+/* ------------------------------------------------------------------ */
+/* Chart panel + SVG chart                                            */
+/* ------------------------------------------------------------------ */
+
+.dfe-chart-panel {
+  margin-top: 18px;
+}
+
+.dfe-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border: 1px solid var(--dfe-line);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--dfe-sunken);
+  color: var(--dfe-navy);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dfe-chip-growth { background: rgba(0, 169, 157, 0.12); color: var(--dfe-teal-deep); border-color: rgba(0, 169, 157, 0.3); }
+.dfe-chip-stable { background: rgba(18, 58, 92, 0.08); color: var(--dfe-navy); }
+.dfe-chip-decline { background: rgba(196, 86, 62, 0.1); color: #93402c; border-color: rgba(196, 86, 62, 0.28); }
+
+.dfc-chart {
+  position: relative;
+  margin-top: 12px;
+}
+
+.dfc-svg {
+  display: block;
+  width: 100%;
+  height: 320px;
+}
+
+.dfc-grid {
+  stroke: rgba(18, 40, 62, 0.08);
+  stroke-width: 1;
+}
+
+.dfc-forecast-band {
+  fill: rgba(232, 161, 61, 0.07);
+}
+
+.dfc-area {
+  fill: rgba(0, 169, 157, 0.10);
+}
+
+.dfc-line {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dfc-line-historical {
+  stroke: var(--dfe-teal);
+}
+
+.dfc-line-forecast {
+  stroke: var(--dfe-amber);
+  stroke-width: 2.2;
+  stroke-dasharray: 7 6;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 900ms var(--motion-ease-out, ease);
+}
+
+.dfc-chart:not(.is-revealed) .dfc-line-forecast {
+  stroke-dashoffset: 600;
+}
+
+.dfc-line-historical {
+  stroke-dasharray: 2400;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1100ms var(--motion-ease-out, ease);
+}
+
+.dfc-chart:not(.is-revealed) .dfc-line-historical {
+  stroke-dashoffset: 2400;
+}
+
+.dfc-transition {
+  stroke: rgba(18, 40, 62, 0.35);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 4;
+}
+
+.dfc-peak-dot {
+  fill: var(--dfe-teal-deep);
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.dfc-axis-label {
+  fill: rgba(18, 40, 62, 0.55);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dfc-axis-label-forecast {
+  fill: rgba(154, 98, 20, 0.9);
+}
+
+.dfc-region-label {
+  fill: rgba(154, 98, 20, 0.95);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dfc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 10px;
+}
+
+/* Screen-reader data table wrapper: the table's intrinsic width must never
+   widen the chart panel on small screens. */
+.dfc-data-table {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dfc-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dfe-ink);
+  opacity: 0.75;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.dfc-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dfe-teal);
+}
+
+.dfc-swatch-forecast { background: var(--dfe-amber); }
+.dfc-swatch-history { background: var(--dfe-teal); }
+
+.dfe-chart-footnote {
+  margin: 12px 0 0;
+  color: var(--dfe-ink);
+  opacity: 0.65;
+  font-size: 12.5px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Bar list                                                           */
+/* ------------------------------------------------------------------ */
+
+.dfc-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.dfc-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dfc-bar-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dfc-bar-label {
+  overflow: hidden;
+  color: var(--dfe-ink);
+  font-size: 13.5px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dfc-bar-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--dfe-navy);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.dfc-bar-value strong {
+  font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dfc-bar-value-label,
+.dfc-bar-secondary {
+  color: var(--dfe-ink);
+  opacity: 0.55;
+  font-size: 11.5px;
+}
+
+.dfc-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-pill, 999px);
+  background: rgba(18, 40, 62, 0.07);
+  overflow: hidden;
+}
+
+.dfc-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-pill, 999px);
+  background: linear-gradient(90deg, var(--dfe-teal-deep), var(--dfe-teal));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 760ms var(--motion-ease-out, ease);
+}
+
+.dfc-bars.is-revealed .dfc-bar-fill {
+  transform: scaleX(1);
+}
+
+.dfc-bar-caption {
+  color: var(--dfe-ink);
+  opacity: 0.6;
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Donut                                                              */
+/* ------------------------------------------------------------------ */
+
+.dfc-donut {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.dfc-donut-svg {
+  width: 140px;
+  height: 140px;
+  flex: 0 0 auto;
+}
+
+.dfc-donut-track {
+  fill: none;
+  stroke: rgba(18, 40, 62, 0.08);
+  stroke-width: 16;
+}
+
+.dfc-donut-slice {
+  fill: none;
+  stroke-width: 16;
+  transform: rotate(-90deg);
+  transform-origin: 70px 70px;
+}
+
+.dfc-donut:not(.is-revealed) .dfc-donut-slice {
+  opacity: 0;
+}
+
+.dfc-donut-slice {
+  transition: opacity 500ms ease;
+}
+
+.dfc-slice-high { stroke: #00a99d; }
+.dfc-slice-medium { stroke: #58b8d8; }
+.dfc-slice-low { stroke: #e8a13d; }
+.dfc-slice-insufficient { stroke: #c8ced6; }
+
+.dfc-donut-value {
+  fill: var(--dfe-navy);
+  font-size: 26px;
+  font-weight: 780;
+}
+
+.dfc-donut-label {
+  fill: rgba(18, 40, 62, 0.55);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dfc-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dfc-donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dfe-ink);
+  opacity: 0.8;
+  font-size: 13px;
+}
+
+.dfc-donut-legend strong {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.dfc-donut-legend .dfc-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+/* Backtest note */
+.dfe-backtest {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px dashed var(--dfe-line);
+  border-radius: var(--radius-md, 12px);
+  background: var(--dfe-sunken);
+}
+
+.dfe-backtest h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.dfe-backtest p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+/* ------------------------------------------------------------------ */
+/* Demand bands (growth / stable / decline)                           */
+/* ------------------------------------------------------------------ */
+
+.dfe-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.dfe-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.dfe-band-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+/* Grid/flex children default to min-content sizing; the nowrap medicine
+   names must never widen a panel on narrow screens. */
+.dfe-band-list li,
+.dfe-grid-3 > *,
+.dfe-grid-2 > *,
+.dfe-kpi-grid > * {
+  min-width: 0;
+}
+
+.dfe-band-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 9px);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms var(--motion-ease-out, ease);
+}
+
+.dfe-band-item:hover {
+  background: var(--dfe-sunken);
+  border-color: var(--dfe-line);
+  transform: translateX(2px);
+}
+
+.dfe-band-item:focus-visible {
+  outline: 2px solid var(--dfe-teal);
+  outline-offset: 1px;
+}
+
+.dfe-band-name {
+  /* Flex cross-axis items default to min-width:auto, which lets nowrap text
+     stretch past its button and push the whole panel wider — clamp it. */
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--dfe-ink);
+  font-size: 13.5px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dfe-band-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--dfe-ink);
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+/* Trend badges */
+.dfe-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dfe-trend-up { color: var(--dfe-teal-deep); }
+.dfe-trend-down { color: #b04a31; }
+.dfe-trend-flat { color: rgba(18, 40, 62, 0.55); font-weight: 600; }
+
+/* ------------------------------------------------------------------ */
+/* Table area + demo note + skeletons                                 */
+/* ------------------------------------------------------------------ */
+
+.dfe-demo-note {
+  margin: 14px 0 0;
+  color: var(--dfe-ink);
+  opacity: 0.6;
+  font-size: 12px;
+}
+
+.dfe-demo-note code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--dfe-sunken);
+  font-size: 11.5px;
+}
+
+.dfe-skeleton {
+  position: relative;
+  border-radius: var(--radius-lg, 16px);
+  background:
+    linear-gradient(100deg, rgba(18, 40, 62, 0.06) 38%, rgba(18, 40, 62, 0.12) 50%, rgba(18, 40, 62, 0.06) 62%),
+    var(--dfe-sunken);
+  background-size: 240% 100%;
+  animation: dfe-shimmer 1.4s ease-in-out infinite;
+}
+
+.dfe-skeleton-kpi {
+  min-height: 118px;
+}
+
+.dfe-skeleton-chart {
+  height: 320px;
+  margin-top: 12px;
+}
+
+@keyframes dfe-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -80% 0; }
+}
+
+.forecast-product-cell strong {
+  display: block;
+}
+
+.forecast-sku {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--dfe-sunken);
+  font-size: 12px;
+}
+
+.forecast-controls {
+  margin: 14px 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Responsive                                                         */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 1080px) {
+  .dfe-grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .dfe-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dfe-hero-inner {
+    padding: 30px 22px 26px;
+  }
+
+  .dfc-svg {
+    height: 260px;
+  }
+}
+
+@media (max-width: 640px) {
+  .dfe-kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .dfe-kpi-value {
+    font-size: 24px;
+  }
+
+  .dfc-svg {
+    height: 210px;
+  }
+
+  .dfc-donut {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dfe-hero-meta {
+    gap: 10px 20px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Reduced motion — everything settles instantly                      */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .dfe-hero::after,
+  .dfe-pulse {
+    animation: none;
+  }
+
+  .dfe-hero-title,
+  .dfe-hero-copy,
+  .dfe-hero-meta {
+    animation: none;
+  }
+
+  .dfe-kpi,
+  .dfc-bar-fill,
+  .dfc-line-forecast,
+  .dfc-line-historical,
+  .dfc-donut-slice,
+  .dfe-skeleton {
+    animation: none;
+    transition: none;
+  }
+
+  .dfe-kpi {
+    opacity: 1;
+    transform: none;
+  }
+
+  .dfc-bar-fill {
+    transform: scaleX(1);
+  }
+
+  .dfc-chart:not(.is-revealed) .dfc-line-forecast,
+  .dfc-chart:not(.is-revealed) .dfc-line-historical {
+    stroke-dashoffset: 0;
+  }
+
+  .dfc-donut:not(.is-revealed) .dfc-donut-slice {
+    opacity: 1;
+  }
+}

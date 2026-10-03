@@ -16,6 +16,7 @@ import {
   validatePrescriptionFile
 } from "./prescription.storage";
 import { recordAnalyticsEvent } from "../../analytics/analytics.events";
+import { recordAuditEvent, recordAuditEventSafe } from "../../../observability/audit";
 
 const prescriptionSelect = {
   id: true,
@@ -73,6 +74,16 @@ export async function createPatientPrescription(
         createdByUserId: patientId
       },
       select: prescriptionSelect
+    });
+
+    // Business-action audit: submission is recorded without any document
+    // metadata (no name, key, checksum, or notes).
+    await recordAuditEvent(prisma, {
+      eventType: "PRESCRIPTION_SUBMITTED",
+      actorUserId: patientId,
+      actorRole: "PATIENT",
+      resourceType: "PRESCRIPTION",
+      resourceId: prescription.id
     });
 
     return toPrescriptionResponse(prescription);
@@ -212,6 +223,22 @@ async function transitionPrescription(
     });
     if (result.count === 1 && data.status === PrescriptionStatus.QUERY) {
       await recordAnalyticsEvent(transaction, "PRESCRIPTION_QUERY_CREATED", { userId: reviewerId, entityType: "PRESCRIPTION", entityId: prescriptionId });
+    }
+    if (result.count === 1) {
+      // Review actions are security-relevant pharmacist decisions; the review
+      // reason (free text) is deliberately not copied into audit metadata.
+      await recordAuditEvent(transaction, {
+        eventType:
+          data.status === PrescriptionStatus.VERIFIED
+            ? "PRESCRIPTION_VERIFIED"
+            : data.status === PrescriptionStatus.REJECTED
+              ? "PRESCRIPTION_REJECTED"
+              : "PRESCRIPTION_QUERIED",
+        actorUserId: reviewerId,
+        resourceType: "PRESCRIPTION",
+        resourceId: prescriptionId,
+        metadata: { status: data.status }
+      });
     }
     return result;
   });

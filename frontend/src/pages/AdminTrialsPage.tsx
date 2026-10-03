@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AdminPortalShell } from "../admin/AdminPortalShell";
 import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
 import {
   createTrial,
@@ -49,7 +50,7 @@ const emptyForm = {
 };
 
 export function AdminTrialsPage({ navigate }: { navigate: Navigate }) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [trials, setTrials] = useState<AdminTrial[]>([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize, total: 0, totalPages: 1 });
   const [selected, setSelected] = useState<AdminTrial | null>(null);
@@ -69,6 +70,8 @@ export function AdminTrialsPage({ navigate }: { navigate: Navigate }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    let stale = false;
+
     listAdminTrials({
       page: query.page,
       pageSize,
@@ -77,31 +80,46 @@ export function AdminTrialsPage({ navigate }: { navigate: Navigate }) {
       isPublished: query.published === "ALL" ? undefined : query.published === "PUBLISHED"
     })
       .then((response) => {
+        if (stale) return; // a newer query superseded this response
         setTrials(response.items);
         setPagination(response.pagination);
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
+      .catch((requestError: unknown) => {
+        if (!stale) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!stale) setLoading(false);
+      });
+
+    return () => {
+      stale = true;
+    };
   }, [query]);
 
   useEffect(() => {
+    let stale = false;
+
     listAdminTrialInterests({ page: interestPage, pageSize })
       .then((response) => {
+        if (stale) return; // a newer page superseded this response
         setInterests(response.items);
         setInterestPagination(response.pagination);
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setInterestsLoading(false));
+      .catch((requestError: unknown) => {
+        if (!stale) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (!stale) setInterestsLoading(false);
+      });
+
+    return () => {
+      stale = true;
+    };
   }, [interestPage]);
 
   function changeInterestPage(delta: number): void {
     setInterestsLoading(true);
     setInterestPage((current) => current + delta);
-  }
-
-  function leave(): void {
-    signOut();
-    navigate("/");
   }
 
   function runQuery(next: AdminTrialsQuery): void {
@@ -214,16 +232,12 @@ export function AdminTrialsPage({ navigate }: { navigate: Navigate }) {
   if (!user) return null;
 
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Operations admin</p>
-          <h1>Clinical trials</h1>
-          <p className="intro">Curate the clinical trial records shown to patients and review submitted interest.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
-
+    <AdminPortalShell
+      navigate={navigate}
+      activePath="/admin/trials"
+      title="Clinical trials"
+      actions={<Button type="button" onClick={startCreate}>New trial</Button>}
+    >
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <div className="success-message" role="status">{notice}</div> : null}
 
@@ -231,7 +245,6 @@ export function AdminTrialsPage({ navigate }: { navigate: Navigate }) {
         <Panel>
           <div className="detail-header">
             <h2>Trials</h2>
-            <Button type="button" onClick={startCreate}>New trial</Button>
           </div>
           <form className="form-stack" onSubmit={applyFilters}>
             <Field label="Search trials" htmlFor="trials-admin-search">
@@ -375,7 +388,7 @@ export function AdminTrialsPage({ navigate }: { navigate: Navigate }) {
           </div>
         </Panel>
       </section>
-    </main>
+    </AdminPortalShell>
   );
 }
 

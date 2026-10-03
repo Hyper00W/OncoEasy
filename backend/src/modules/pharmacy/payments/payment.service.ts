@@ -3,6 +3,7 @@ import { OrderStatus, PaymentMethod, PaymentStatus, Prisma } from "@prisma/clien
 import { prisma } from "../../../database/prisma";
 import { AppError } from "../../../errors/app-error";
 import { getPaymentGateway, isPaymentGatewayEnabled } from "../../../payments/payment-gateway";
+import { recordAuditEvent, recordAuditEventSafe } from "../../../observability/audit";
 import { assertPaymentMethodEligible } from "./payment.eligibility";
 import { toPaymentResponse } from "./payment.mapper";
 import { pendingPaymentProvider } from "./payment.provider";
@@ -80,8 +81,24 @@ export async function initiatePatientPayment(
       );
     }
     if (method === PaymentMethod.PREPAID && isPaymentGatewayEnabled()) {
+      await recordAuditEvent(prisma, {
+        eventType: "PAYMENT_INITIATED",
+        actorUserId: patientId,
+        actorRole: "PATIENT",
+        resourceType: "PAYMENT",
+        resourceId: payment.id,
+        metadata: { method }
+      });
       return completeGatewayInitiation(order.id);
     }
+    await recordAuditEvent(prisma, {
+      eventType: "PAYMENT_INITIATED",
+      actorUserId: patientId,
+      actorRole: "PATIENT",
+      resourceType: "PAYMENT",
+      resourceId: payment.id,
+      metadata: { method }
+    });
     return toPaymentResponse(payment);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -238,6 +255,14 @@ export async function verifyPatientPayment(patientId: string, orderId: string, i
       }
       throw new AppError(409, "PAYMENT_STATE_CONFLICT", "Payment could not be marked as paid");
     }
+    await recordAuditEventSafe({
+      eventType: "PAYMENT_VERIFIED",
+      actorUserId: patientId,
+      actorRole: "PATIENT",
+      resourceType: "PAYMENT",
+      resourceId: payment.id,
+      metadata: { orderId, status: "PAID" }
+    });
   } else if (gatewayPayment.status === "AUTHORIZED") {
     await prisma.payment.updateMany({
       where: { orderId, status: PaymentStatus.PENDING },

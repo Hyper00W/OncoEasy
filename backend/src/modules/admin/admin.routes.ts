@@ -8,5 +8,5 @@ import { overview } from "./admin.controller";
 import { adminOverviewQuerySchema } from "./admin.schemas";
 
 export const adminRouter = Router();
-adminRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN));
+adminRouter.use(authenticate, requireRole(UserRole.OPS_ADMIN, UserRole.OWNER));
 adminRouter.get("/overview", validateRequest({ query: adminOverviewQuerySchema }), overview);

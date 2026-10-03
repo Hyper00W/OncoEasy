@@ -191,9 +191,12 @@ test("full local lifecycle: out-for-delivery, proof gates, COD proof requirement
   assert.equal(delivered.body.data.status, DeliveryStatus.DELIVERED);
 
   // COD collection is recorded through the required CASH_OVER_BILL proof
-  // (the existing authorized workflow); payment row itself stays PENDING.
+  // (the existing authorized workflow); Phase 4.8 additionally records the
+  // financial state atomically with the proof: the payment becomes
+  // CASH_COLLECTED exactly once, and never regresses on repeated proofs.
   const payment = await prisma.payment.findFirst({ where: { orderId } });
-  assert.equal(payment?.status, PaymentStatus.PENDING);
+  assert.equal(payment?.status, PaymentStatus.CASH_COLLECTED);
+  assert.ok(payment?.paidAt);
   const proofCount = await prisma.deliveryProof.count({ where: { deliveryId, type: "CASH_OVER_BILL" } });
   assert.equal(proofCount, 1);
   const order = await prisma.order.findUnique({ where: { id: orderId } });

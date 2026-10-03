@@ -1,8 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { AppError } from "../errors/app-error";
+import { createLogger } from "../observability/logger";
 
 import type { GatewayOrder, GatewayOrderInput, GatewayPayment, PaymentGateway, SignatureVerificationInput } from "./payment-gateway";
+
+const logger = createLogger("integration.razorpay");
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -99,35 +102,66 @@ export class RazorpayPaymentGateway implements PaymentGateway {
   private async request(path: string, init: { method: "GET" | "POST"; body?: string }): Promise<Record<string, unknown>> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    const startedAt = Date.now();
 
-    let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}${path}`, {
-        method: init.method,
-        headers: {
-          // Official Razorpay server-side auth: Basic base64(key_id:key_secret).
-          Authorization: `Basic ${Buffer.from(`${this.publicKeyId}:${this.keySecret}`).toString("base64")}`,
-          "Content-Type": "application/json"
-        },
-        body: init.body,
-        signal: controller.signal
+      let response: Response;
+      try {
+        response = await fetch(`${this.baseUrl}${path}`, {
+          method: init.method,
+          headers: {
+            // Official Razorpay server-side auth: Basic base64(key_id:key_secret).
+            Authorization: `Basic ${Buffer.from(`${this.publicKeyId}:${this.keySecret}`).toString("base64")}`,
+            "Content-Type": "application/json"
+          },
+          body: init.body,
+          signal: controller.signal
+        });
+      } catch (_error) {
+        // Safe diagnostics: operation + normalized category only. Credentials,
+        // request bodies, and provider payloads are never logged.
+        logger.warn("integration_payment_gateway_failed", {
+          operation: path,
+          outcome: "unreachable",
+          durationMs: Date.now() - startedAt
+        });
+        throw unreachableError();
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      const rawBody = await response.text();
+
+      if (!response.ok) {
+        logger.warn("integration_payment_gateway_failed", {
+          operation: path,
+          outcome: "http_error",
+          providerHttpCategory: response.status >= 500 ? "PROVIDER_SERVER_ERROR" : "PROVIDER_CLIENT_ERROR",
+          durationMs: Date.now() - startedAt
+        });
+        throw new AppError(502, "PAYMENT_GATEWAY_ERROR", "Payment gateway request failed");
+      }
+
+      try {
+        return JSON.parse(rawBody) as Record<string, unknown>;
+      } catch (_error) {
+        logger.warn("integration_payment_gateway_failed", {
+          operation: path,
+          outcome: "invalid_response",
+          durationMs: Date.now() - startedAt
+        });
+        throw new AppError(502, "PAYMENT_GATEWAY_ERROR", "Payment gateway request failed");
+      }
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      logger.warn("integration_payment_gateway_failed", {
+        operation: path,
+        outcome: "unexpected_error",
+        durationMs: Date.now() - startedAt
       });
-    } catch (_error) {
       throw unreachableError();
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    const rawBody = await response.text();
-
-    if (!response.ok) {
-      throw new AppError(502, "PAYMENT_GATEWAY_ERROR", "Payment gateway request failed");
-    }
-
-    try {
-      return JSON.parse(rawBody) as Record<string, unknown>;
-    } catch (_error) {
-      throw new AppError(502, "PAYMENT_GATEWAY_ERROR", "Payment gateway request failed");
     }
   }
 }

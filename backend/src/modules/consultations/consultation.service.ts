@@ -14,6 +14,7 @@ import type {
   CancellationInput
 } from "./consultation.schemas";
 import { recordAnalyticsEvent } from "../analytics/analytics.events";
+import { recordAuditEvent, recordAuditEventSafe } from "../../observability/audit";
 
 const appointmentInclude = {
   doctor: { select: { id: true, fullName: true } },
@@ -126,6 +127,14 @@ export async function bookAppointment(patientId: string, input: BookAppointmentI
         include: appointmentInclude
       });
       await recordAnalyticsEvent(transaction, "CONSULTATION_BOOKED", { userId: patientId, entityType: "APPOINTMENT", entityId: appointment.id, metadata: { consultationType: input.consultationType } });
+      await recordAuditEvent(transaction, {
+        eventType: "APPOINTMENT_CREATED",
+        actorUserId: patientId,
+        actorRole: "PATIENT",
+        resourceType: "APPOINTMENT",
+        resourceId: appointment.id,
+        metadata: { doctorUserId: availability.doctorId }
+      });
       return appointment;
     });
     return toAppointmentResponse(appointment);
@@ -161,6 +170,14 @@ export async function cancelPatientAppointment(patientId: string, appointmentId:
     data: { status: AppointmentStatus.CANCELLED, cancellationReason: input.reason || null, cancelledAt: new Date() }
   });
   if (updated.count !== 1) await throwAppointmentStateError(appointmentId, patientId);
+  await recordAuditEventSafe({
+    eventType: "APPOINTMENT_STATUS_CHANGED",
+    actorUserId: patientId,
+    actorRole: "PATIENT",
+    resourceType: "APPOINTMENT",
+    resourceId: appointmentId,
+    metadata: { to: AppointmentStatus.CANCELLED }
+  });
   return getPatientAppointment(patientId, appointmentId);
 }
 
@@ -208,7 +225,17 @@ export async function completeDoctorAppointment(doctorId: string, appointmentId:
   await assertDoctor(doctorId);
   const updated = await prisma.$transaction(async (transaction) => {
     const result = await transaction.appointment.updateMany({ where: { id: appointmentId, doctorId, status: AppointmentStatus.CONFIRMED }, data: { status: AppointmentStatus.COMPLETED, completedAt: new Date() } });
-    if (result.count === 1) await recordAnalyticsEvent(transaction, "CONSULTATION_COMPLETED", { userId: doctorId, entityType: "APPOINTMENT", entityId: appointmentId });
+    if (result.count === 1) {
+      await recordAnalyticsEvent(transaction, "CONSULTATION_COMPLETED", { userId: doctorId, entityType: "APPOINTMENT", entityId: appointmentId });
+      await recordAuditEvent(transaction, {
+        eventType: "APPOINTMENT_STATUS_CHANGED",
+        actorUserId: doctorId,
+        actorRole: "DOCTOR",
+        resourceType: "APPOINTMENT",
+        resourceId: appointmentId,
+        metadata: { to: AppointmentStatus.COMPLETED }
+      });
+    }
     return result;
   });
   if (updated.count !== 1) await throwAppointmentStateError(appointmentId, doctorId);

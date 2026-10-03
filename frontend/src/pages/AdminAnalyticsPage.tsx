@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AdminPortalShell } from "../admin/AdminPortalShell";
 import {
   analyticsEventNames,
   getAnalyticsOverview,
@@ -17,7 +18,7 @@ type Navigate = (path: string) => void;
 const eventsPageSize = 20;
 
 export function AdminAnalyticsPage({ navigate }: { navigate: Navigate }) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [events, setEvents] = useState<AnalyticsEvent[]>([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: eventsPageSize, total: 0, totalPages: 1 });
@@ -80,11 +81,6 @@ export function AdminAnalyticsPage({ navigate }: { navigate: Navigate }) {
     };
   }, [eventsQuery]);
 
-  function leave(): void {
-    signOut();
-    navigate("/");
-  }
-
   function applyRange(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     setError(null);
@@ -119,16 +115,11 @@ export function AdminAnalyticsPage({ navigate }: { navigate: Navigate }) {
   if (!user) return null;
 
   return (
-    <main className="workspace-page consultation-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Operations admin</p>
-          <h1>Analytics</h1>
-          <p className="intro">Platform metrics computed by the backend from referral, consultation, lab, PAP, pharmacy, and engagement activity.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
-
+    <AdminPortalShell
+      navigate={navigate}
+      activePath="/admin/analytics"
+      title="Analytics"
+    >
       {error ? (
         <>
           <Alert>{error}</Alert>
@@ -241,7 +232,7 @@ export function AdminAnalyticsPage({ navigate }: { navigate: Navigate }) {
           <Button className="button-secondary" type="button" disabled={eventsLoading || pagination.page >= pagination.totalPages} onClick={() => setEventsQuery({ ...eventsQuery, page: pagination.page + 1 })}>Next</Button>
         </div>
       </Panel>
-    </main>
+    </AdminPortalShell>
   );
 }
 

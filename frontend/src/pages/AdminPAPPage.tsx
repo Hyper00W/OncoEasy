@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { Alert, Button, Field, Input, LoadingState, Panel } from "../components/ui";
+import { AdminPortalShell } from "../admin/AdminPortalShell";
+import { AdminDetailPanel } from "../components/admin/AdminDetailPanel";
+import { AdminFilterBar, AdminSelectFilter } from "../components/admin/AdminFilterBar";
+import { StatusChip } from "../components/StatusChip";
+import { Alert, Button, Field, Input, LoadingState } from "../components/ui";
+import { formatDate, formatStatusLabel } from "../components/status-utils";
+import type { Navigate } from "../components/navigation-types";
 import {
   getAdminPapApplication,
   getAdminPapDocument,
@@ -11,14 +17,20 @@ import {
   type PapApplication
 } from "../pap/pap-api";
 
-type Navigate = (path: string) => void;
-
 const statuses = ["UNDER_REVIEW", "MORE_INFORMATION_REQUIRED", "APPROVED", "REJECTED", "COMPLETED"];
 
+/**
+ * PAP operations (Phase 6.5): manual review workflow over the existing
+ * admin PAP endpoints. Status filter is the server-side query the backend
+ * exposes; document access uses the existing secure per-document endpoint.
+ * There is no automated eligibility scoring and no invented approval logic —
+ * the reviewer records the decision manually.
+ */
 export function AdminPAPPage({ navigate }: { navigate: Navigate }) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [applications, setApplications] = useState<PapApplication[]>([]);
   const [selected, setSelected] = useState<PapApplication | null>(null);
+  const [statusFilter, setStatusFilter] = useState("");
   const [status, setStatus] = useState("UNDER_REVIEW");
   const [reason, setReason] = useState("");
   const [reviewNotes, setReviewNotes] = useState("");
@@ -28,27 +40,38 @@ export function AdminPAPPage({ navigate }: { navigate: Navigate }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    listAdminPapApplications()
-      .then((response) => {
-        setApplications(response);
-        if (response[0]) setSelected(response[0]);
-      })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
-      .finally(() => setLoading(false));
+    load(statusFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filter applies via applyFilters
   }, []);
 
-  function leave(): void {
-    signOut();
-    navigate("/");
+  function load(statusValue: string): void {
+    setLoading(true);
+    listAdminPapApplications(statusValue || undefined)
+      .then((response) => {
+        setApplications(response);
+        setError(null);
+        setLoading(false);
+      })
+      .catch((requestError: unknown) => {
+        setError(describeError(requestError, "The PAP application queue could not be loaded."));
+        setLoading(false);
+      });
   }
 
   function refresh(): void {
-    listAdminPapApplications()
-      .then((response) => {
-        setApplications(response);
-        if (selected) setSelected(response.find((item) => item.applicationId === selected.applicationId) ?? response[0] ?? null);
-      })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)));
+    listAdminPapApplications(statusFilter || undefined)
+      .then((response) => setApplications(response))
+      .catch(() => undefined);
+  }
+
+  function applyFilters(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    load(statusFilter);
+  }
+
+  function clearFilters(): void {
+    setStatusFilter("");
+    load("");
   }
 
   function openApplication(applicationId: string): void {
@@ -60,11 +83,11 @@ export function AdminPAPPage({ navigate }: { navigate: Navigate }) {
         setReason(application.reviewReason ?? "");
         setReviewNotes(application.reviewNotes ?? "");
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)));
+      .catch((requestError: unknown) => setError(describeError(requestError, "That application could not be opened.")));
   }
 
   function saveReview(): void {
-    if (!selected) return;
+    if (!selected || saving) return; // one review submission at a time
     setSaving(true);
     setError(null);
     updatePapApplicationStatus(selected.applicationId, {
@@ -74,76 +97,151 @@ export function AdminPAPPage({ navigate }: { navigate: Navigate }) {
     })
       .then((application) => {
         setSelected(application);
-        setNotice(`Application moved to ${formatStatus(application.status)}.`);
+        setNotice(`Application moved to ${formatStatusLabel(application.status)}.`);
         refresh();
       })
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)))
+      .catch((requestError: unknown) => setError(describeError(requestError, "The review could not be saved.")))
       .finally(() => setSaving(false));
   }
 
   function openDocument(applicationId: string, documentId: string): void {
     getAdminPapDocument(applicationId, documentId)
       .then((document) => window.open(document.access.reference, "_blank", "noopener,noreferrer"))
-      .catch((requestError: unknown) => setError(getErrorMessage(requestError)));
+      .catch((requestError: unknown) => setError(describeError(requestError, "The document could not be opened.")));
   }
 
   if (!user) return null;
 
   return (
-    <main className="workspace-page pap-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Operations admin</p>
-          <h1>PAP Navigator</h1>
-          <p className="intro">Review patient assistance applications and record manual decisions.</p>
-        </div>
-        <Button className="button-secondary" type="button" onClick={leave}>Sign out</Button>
-      </header>
-
+    <AdminPortalShell navigate={navigate} activePath="/admin/pap" title="PAP Navigator">
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <div className="success-message" role="status">{notice}</div> : null}
 
-      {loading ? <LoadingState label="Loading PAP applications..." /> : (
-        <section className="pap-grid">
-          <Panel>
-            <h2>Application queue</h2>
-            {applications.length === 0 ? <p className="empty-state">No PAP applications are waiting for review.</p> : (
+      <div className="admin-sections">
+        <section className="panel admin-queue-panel" aria-label="PAP application queue">
+          <div className="queue-head">
+            <h2>Applications</h2>
+            <Button className="button-link" type="button" onClick={refresh}>
+              Refresh
+            </Button>
+          </div>
+
+          <AdminFilterBar onApply={applyFilters} onClear={clearFilters}>
+            <AdminSelectFilter
+              id="admin-pap-status"
+              label="Application status"
+              value={statusFilter}
+              options={["SUBMITTED", "UNDER_REVIEW", "MORE_INFORMATION_REQUIRED", "APPROVED", "REJECTED", "COMPLETED"]}
+              allLabel="All statuses"
+              onChange={setStatusFilter}
+            />
+          </AdminFilterBar>
+
+          {loading ? (
+            <LoadingState label="Loading applications..." />
+          ) : applications.length === 0 ? (
+            <div className="empty-state-block" role="status">
+              <p className="empty-state-title">
+                {statusFilter
+                  ? `No applications are currently ${formatStatusLabel(statusFilter).toLowerCase()}`
+                  : "No PAP applications yet"}
+              </p>
+              <p className="empty-state-hint">
+                {statusFilter
+                  ? "Try another status or clear the filter."
+                  : "Applications appear here as patients apply for assistance programs."}
+              </p>
+            </div>
+          ) : (
+            <div className="queue-list">
+              {applications.map((application) => (
+                <button
+                  className="queue-row"
+                  type="button"
+                  key={application.applicationId}
+                  onClick={() => openApplication(application.applicationId)}
+                >
+                  <div className="queue-row-main">
+                    <strong>{application.patient.fullName}</strong>
+                    <span className="muted">
+                      {application.program.name} • submitted {formatDate(application.createdAt)}
+                    </span>
+                  </div>
+                  <StatusChip status={application.status} />
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {selected ? (
+          <AdminDetailPanel
+            eyebrow={formatStatusLabel(selected.status)}
+            title={selected.patient.fullName}
+            meta={`${selected.program.name} • submitted ${formatDate(selected.createdAt)}`}
+            onClose={() => setSelected(null)}
+            rows={[
+              { label: "Status", value: <StatusChip status={selected.status} /> },
+              { label: "Phone", value: selected.applicationData.phone },
+              { label: "Address", value: selected.applicationData.address },
+              { label: "Diagnosis summary", value: selected.applicationData.diagnosisSummary },
+              { label: "Household income", value: selected.applicationData.householdIncome },
+              { label: "Financial need", value: selected.applicationData.financialNeed },
+              { label: "Reviewed by", value: selected.reviewedBy ? selected.reviewedBy.fullName : "Not yet reviewed" },
+              selected.reviewedAt ? { label: "Reviewed at", value: formatDate(selected.reviewedAt) } : null
+            ].filter(Boolean) as { label: string; value: React.ReactNode }[]}
+          >
+            <h3>Submitted documents</h3>
+            {selected.documents.length === 0 ? (
+              <p className="empty-state">No documents submitted.</p>
+            ) : (
               <div className="stack-list">
-                {applications.map((application) => (
-                  <button className="list-row list-row-button" type="button" key={application.applicationId} onClick={() => openApplication(application.applicationId)}>
-                    <div><strong>{application.patient.fullName}</strong><span className="muted">{application.program.name} • {formatDate(application.createdAt)}</span></div>
-                    <span className={`status status-${application.status.toLowerCase()}`}>{formatStatus(application.status)}</span>
-                  </button>
+                {selected.documents.map((document) => (
+                  <div className="list-row" key={document.documentId}>
+                    <div>
+                      <strong>{document.documentName}</strong>
+                      <span className="muted">{document.mimeType} • {formatDate(document.uploadedAt)}</span>
+                    </div>
+                    <Button
+                      className="button-secondary"
+                      type="button"
+                      onClick={() => openDocument(selected.applicationId, document.documentId)}
+                    >
+                      Open securely
+                    </Button>
+                  </div>
                 ))}
               </div>
             )}
-          </Panel>
 
-          {selected ? (
-            <Panel>
-              <div className="detail-header"><div><h2>Application review</h2><p className="muted">{selected.patient.fullName} • {selected.program.name}</p></div><span className={`status status-${selected.status.toLowerCase()}`}>{formatStatus(selected.status)}</span></div>
-              <dl className="detail-list">
-                <dt>Phone</dt><dd>{selected.applicationData.phone}</dd>
-                <dt>Address</dt><dd>{selected.applicationData.address}</dd>
-                <dt>Diagnosis summary</dt><dd>{selected.applicationData.diagnosisSummary}</dd>
-                <dt>Household income</dt><dd>{selected.applicationData.householdIncome}</dd>
-                <dt>Financial need</dt><dd>{selected.applicationData.financialNeed}</dd>
-              </dl>
-
-              <h3>Submitted documents</h3>
-              {selected.documents.length === 0 ? <p className="empty-state">No documents submitted.</p> : <div className="stack-list">{selected.documents.map((document) => <div className="list-row" key={document.documentId}><div><strong>{document.documentName}</strong><span className="muted">{document.mimeType} • {formatDate(document.uploadedAt)}</span></div><Button className="button-secondary" type="button" onClick={() => openDocument(selected.applicationId, document.documentId)}>Open securely</Button></div>)}</div>}
-
-              <div className="form-stack">
-                <Field label="Review status" htmlFor="pap-review-status"><select className="input" id="pap-review-status" value={status} onChange={(event) => setStatus(event.target.value)}>{statuses.map((value) => <option key={value} value={value}>{formatStatus(value)}</option>)}</select></Field>
-                <Field label="Reason" htmlFor="pap-review-reason"><Input id="pap-review-reason" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Required for rejection or more information" /></Field>
-                <Field label="Review notes" htmlFor="pap-review-notes"><textarea className="input textarea" id="pap-review-notes" value={reviewNotes} onChange={(event) => setReviewNotes(event.target.value)} /></Field>
-                <Button type="button" disabled={saving} onClick={saveReview}>{saving ? "Saving..." : "Save review"}</Button>
-              </div>
-            </Panel>
-          ) : null}
-        </section>
-      )}
-    </main>
+            <h3 className="section-heading">Record review</h3>
+            <div className="form-stack">
+              <Field label="Review status" htmlFor="pap-review-status">
+                <select className="input" id="pap-review-status" value={status} onChange={(event) => setStatus(event.target.value)}>
+                  {statuses.map((value) => (
+                    <option key={value} value={value}>{formatStatusLabel(value)}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Reason" htmlFor="pap-review-reason" hint="Required by the backend when requesting more information or rejecting.">
+                <Input id="pap-review-reason" value={reason} onChange={(event) => setReason(event.target.value)} />
+              </Field>
+              <Field label="Review notes" htmlFor="pap-review-notes">
+                <textarea
+                  className="input textarea"
+                  id="pap-review-notes"
+                  value={reviewNotes}
+                  onChange={(event) => setReviewNotes(event.target.value)}
+                />
+              </Field>
+              <Button type="button" disabled={saving} onClick={saveReview}>
+                {saving ? "Saving..." : "Save review"}
+              </Button>
+            </div>
+          </AdminDetailPanel>
+        ) : null}
+      </div>
+    </AdminPortalShell>
   );
 }
 
@@ -155,15 +253,6 @@ function nextStatusFor(status: string): string {
   return status;
 }
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
-}
-
-function formatStatus(value: string): string {
-  return value.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "The PAP review request could not be completed.";
+function describeError(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback;
 }
