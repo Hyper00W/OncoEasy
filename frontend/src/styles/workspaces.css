@@ -81,16 +81,17 @@
   transform: translateY(-1px) scale(1.06);
 }
 
-/* Search field: the reference's soft rounded rectangle (8px), with the submit
-   action inset at 6px to match the reference's hero search control. */
+/* Search field: the reference's soft rounded rectangle, on the same radius
+   step as the rest of the ramp, with the submit action inset one step tighter
+   to match the hero search control. */
 .search-field {
-  border-radius: 8px;
-  border-color: #dfe9e5;
+  border-radius: var(--radius-md);
+  border-color: var(--line-strong);
   box-shadow: 0 9px 25px rgba(30, 88, 84, 0.08);
 }
 
 .search-submit {
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   min-width: 96px;
   margin-right: 6px;
   font-size: 13px;
@@ -98,7 +99,7 @@
 }
 
 .search-field:focus-within {
-  box-shadow: 0 0 0 4px rgba(0, 169, 157, 0.16);
+  box-shadow: 0 0 0 4px rgba(0, 120, 111, 0.16);
 }
 
 /* Sticky footer band keeps the established-company composure. */
@@ -160,7 +161,7 @@
 }
 
 .catalog-category-card.is-active {
-  border-color: rgba(0, 169, 157, 0.45);
+  border-color: rgba(0, 120, 111, 0.45);
   background: linear-gradient(150deg, rgba(233, 247, 244, 0.9), #fff 70%);
   box-shadow: var(--shadow-sm);
 }
@@ -227,7 +228,7 @@
 }
 
 .filter-option.is-active {
-  border-color: rgba(0, 169, 157, 0.45);
+  border-color: rgba(0, 120, 111, 0.45);
   background: var(--teal-50);
 }
 
@@ -384,18 +385,24 @@
   --ops-line-soft: #eef2f5;
   --ops-ink: #12253c;
   --ops-ink-soft: #3d5468;
-  --ops-muted: #64798c;
+  /* Metadata text: the previous #64798c measured 4.19:1 on --ops-canvas and
+     4.31:1 on --ops-sunk, so it is one step deeper now (4.91 / 5.04) to clear
+     WCAG AA on every ops surface, not just on white. */
+  --ops-muted: #5a6e80;
 
   /* Ops accent — indigo command identity (patient site keeps teal) */
   --ops-accent: #4f46e5;
   --ops-accent-deep: #3d34c9;
   --ops-accent-soft: #eef0fe;
   --ops-accent-line: #d6d9fb;
-  --ops-teal: #0d9488;
+  /* #0d9488 only reached 3.37:1 on its own soft chip; one step deeper clears AA. */
+  --ops-teal: #0f766e;
   --ops-teal-soft: #e7f6f3;
   --ops-amber: #b45309;
   --ops-amber-soft: #fdf3e3;
-  --ops-green: #15803d;
+  /* #15803d measured 4.499:1 on its soft chip — a hair under AA — so it sits
+     one step deeper (5.53:1) rather than exactly on the threshold. */
+  --ops-green: #12703a;
   --ops-green-soft: #e8f6ed;
   --ops-red: #b4232f;
   --ops-red-soft: #fdecec;
@@ -403,8 +410,9 @@
   /* Elevation — hairline-first, shadow as quiet support */
   --ops-shadow-1: 0 1px 2px rgba(18, 37, 60, 0.05);
   --ops-shadow-2: 0 10px 28px -12px rgba(18, 37, 60, 0.18);
-  --ops-radius: 14px;
-  --ops-radius-sm: 9px;
+  /* Radii come straight from the global ramp — the ops layer used to carry its
+     own 14px/9px pair, which drifted a pixel off --radius-xl (15px) and
+     duplicated --radius-md (9px) exactly. */
 
   /* Rhythm */
   --ops-gap: 18px;
@@ -490,7 +498,7 @@
 .ops-card {
   padding: 22px 24px;
   border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
+  border-radius: var(--radius-xl);
   background: var(--ops-card);
   box-shadow: var(--ops-shadow-1);
 }
@@ -528,7 +536,7 @@
   flex: 0 0 auto;
   width: 30px;
   height: 30px;
-  border-radius: var(--ops-radius-sm);
+  border-radius: var(--radius-md);
   color: var(--ops-accent);
   background: var(--ops-accent-soft);
 }
@@ -568,7 +576,7 @@ a.ops-card:hover {
   gap: 10px;
   padding: 20px;
   border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
+  border-radius: var(--radius-xl);
   background: var(--ops-card);
   box-shadow: var(--ops-shadow-1);
   color: inherit;
@@ -609,7 +617,7 @@ button.ops-kpi:hover .ops-kpi-go {
   place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--ops-accent-soft);
   color: var(--ops-accent);
 }
@@ -702,7 +710,7 @@ button.ops-kpi:hover .ops-kpi-go {
   display: grid;
   place-items: center;
   height: 120px;
-  border-radius: var(--ops-radius-sm);
+  border-radius: var(--radius-md);
   color: var(--ops-muted);
   font-size: 13px;
   background: var(--ops-sunk);
@@ -738,7 +746,7 @@ button.ops-kpi,
   gap: 12px;
   padding: 12px 10px;
   border-bottom: 1px solid var(--ops-line-soft);
-  border-radius: var(--ops-radius-sm);
+  border-radius: var(--radius-md);
   transition: background-color 180ms var(--motion-ease-out);
 }
 
@@ -784,7 +792,7 @@ button.ops-kpi,
   flex: 0 0 auto;
   min-width: 34px;
   padding: 5px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--ops-accent-deep);
   background: var(--ops-accent-soft);
   font-size: 13px;
@@ -860,7 +868,7 @@ button.ops-kpi,
 .ops-empty {
   padding: 22px 16px;
   border: 1px dashed var(--ops-line);
-  border-radius: var(--ops-radius-sm);
+  border-radius: var(--radius-md);
   color: var(--ops-muted);
   background: var(--ops-sunk);
   font-size: 13.5px;
@@ -879,7 +887,7 @@ button.ops-kpi,
   position: relative;
   padding: 16px 16px 14px;
   border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
+  border-radius: var(--radius-xl);
   background: var(--ops-card);
   box-shadow: var(--ops-shadow-1);
   color: inherit;
@@ -973,7 +981,7 @@ button.ops-stage:hover {
 
 .admin-sidebar-brand {
   padding: 8px 10px;
-  border-radius: var(--ops-radius-sm);
+  border-radius: var(--radius-md);
   transition: background-color 200ms var(--motion-ease-out);
 }
 
@@ -1001,7 +1009,7 @@ button.ops-stage:hover {
   align-items: center;
   gap: 10px;
   padding: 8px 10px 8px 12px;
-  border-radius: var(--ops-radius-sm);
+  border-radius: var(--radius-md);
   color: rgba(214, 226, 240, 0.8);
   font-size: 13.5px;
   font-weight: 600;
@@ -1134,7 +1142,7 @@ button.ops-stage:hover {
   overflow: hidden;
   padding: 26px 28px;
   border: 1px solid #1b2c50;
-  border-radius: var(--ops-radius);
+  border-radius: var(--radius-xl);
   background: linear-gradient(118deg, #101d3a 0%, #14244c 55%, #1a2f63 100%);
   color: #e6ecfa;
 }
@@ -1189,7 +1197,7 @@ button.ops-stage:hover {
 .table-scroll {
   overflow-x: auto;
   border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
+  border-radius: var(--radius-xl);
   background: var(--ops-card);
   box-shadow: var(--ops-shadow-1);
 }
@@ -1229,14 +1237,8 @@ button.ops-stage:hover {
   border-bottom: 0;
 }
 
-.admin-table tbody tr {
-  transition: background-color 160ms var(--motion-ease-out);
-}
-
-.admin-table tbody tr:hover {
-  background: #f6f9fc;
-}
-
+/* Row hover + its transition are declared once in index.css ("Tables &
+   queues"); this layer only adds the ops selection treatment. */
 .admin-table tbody tr[aria-selected="true"],
 .admin-table tbody tr.is-selected {
   background: var(--ops-accent-soft);
@@ -1272,7 +1274,7 @@ button.ops-stage:hover {
 }
 
 .admin-detail-panel {
-  border-radius: var(--ops-radius);
+  border-radius: var(--radius-xl);
   box-shadow: var(--ops-shadow-2);
 }
 
@@ -1286,7 +1288,7 @@ button.ops-stage:hover {
   align-items: center;
   padding: 24px 26px;
   border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
+  border-radius: var(--radius-xl);
   background:
     radial-gradient(480px 190px at 100% -30%, rgba(79, 70, 229, 0.1), transparent 62%),
     var(--ops-card);
@@ -1314,7 +1316,7 @@ button.ops-stage:hover {
   gap: 6px;
   padding: 6px 12px;
   border: 1px solid var(--ops-line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--ops-ink-soft);
   background: var(--ops-sunk);
   font-size: 12.5px;
@@ -1349,7 +1351,7 @@ button.ops-stage:hover {
 .doc-insight-row > div {
   padding: 14px 16px;
   border: 1px solid var(--ops-line-soft);
-  border-radius: var(--ops-radius-sm);
+  border-radius: var(--radius-md);
   background: var(--ops-sunk);
 }
 
@@ -1409,7 +1411,7 @@ button.ops-stage:hover {
   gap: 8px;
   padding: 20px;
   border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
+  border-radius: var(--radius-xl);
   background: var(--ops-card);
   box-shadow: var(--ops-shadow-1);
   color: inherit;
@@ -1461,7 +1463,7 @@ button.ops-stage:hover {
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.01em;

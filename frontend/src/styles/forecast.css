@@ -28,7 +28,7 @@
   border: 1px solid var(--dfe-line);
   border-radius: var(--radius-xl, 20px);
   background:
-    radial-gradient(1100px 320px at 12% -40%, rgba(0, 169, 157, 0.16), transparent 62%),
+    radial-gradient(1100px 320px at 12% -40%, rgba(0, 120, 111, 0.16), transparent 62%),
     radial-gradient(900px 300px at 105% -30%, rgba(18, 58, 92, 0.14), transparent 60%),
     linear-gradient(180deg, #082036 0%, var(--dfe-navy) 58%, #17425a 100%);
   color: #ffffff;
@@ -311,7 +311,7 @@
 }
 
 .dfc-spark-area {
-  fill: rgba(0, 169, 157, 0.12);
+  fill: rgba(0, 120, 111, 0.12);
 }
 
 .dfc-spark-amber .dfc-spark-line { stroke: var(--dfe-amber); }
@@ -338,7 +338,7 @@
   white-space: nowrap;
 }
 
-.dfe-chip-growth { background: rgba(0, 169, 157, 0.12); color: var(--dfe-teal-deep); border-color: rgba(0, 169, 157, 0.3); }
+.dfe-chip-growth { background: rgba(0, 120, 111, 0.12); color: var(--dfe-teal-deep); border-color: rgba(0, 120, 111, 0.3); }
 .dfe-chip-stable { background: rgba(18, 58, 92, 0.08); color: var(--dfe-navy); }
 .dfe-chip-decline { background: rgba(196, 86, 62, 0.1); color: #93402c; border-color: rgba(196, 86, 62, 0.28); }
 
@@ -363,7 +363,7 @@
 }
 
 .dfc-area {
-  fill: rgba(0, 169, 157, 0.10);
+  fill: rgba(0, 120, 111, 0.10);
 }
 
 .dfc-line {
@@ -773,7 +773,7 @@
 
 .dfe-demo-note code {
   padding: 1px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--dfe-sunken);
   font-size: 11.5px;
 }
@@ -808,7 +808,7 @@
 
 .forecast-sku {
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--dfe-sunken);
   font-size: 12px;
 }

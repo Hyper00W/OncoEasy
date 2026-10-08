@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "audit:contrast": "node ../qa/frontend-design/contrast-audit.mjs",
+    "audit:css": "node ../qa/frontend-design/css-integrity.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

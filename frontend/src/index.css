@@ -15,11 +15,16 @@
   --brand-100: #dbe8f1;
   --brand-50: #f1f7f8;
 
-  /* Teal — the reference's primary ACTION colour (#00a99d). Buttons,
-     links, active nav and accents all resolve here. */
-  --teal-800: #006b62;
-  --teal-700: #008c82;
-  --teal-600: #00a99d;
+  /* Teal — the ACTION colour for buttons, links, active nav and accents.
+     Every step carries text somewhere, so each one is deep enough to clear
+     WCAG AA (4.5:1) on white, on the cream page and on the teal tints; the
+     ratios are measured in `qa/frontend-design/contrast-audit.mjs`. The reference's
+     original bright #00a99d only reached 2.93:1 against its own white button
+     label, so the ramp now starts one step deeper — same hue family, same
+     restrained clinical feel, legible everywhere. */
+  --teal-800: #00554e;
+  --teal-700: #006b62;
+  --teal-600: #00786f;
   --teal-100: #d5efe9;
   --teal-50: #eaf7f4;
 
@@ -27,13 +32,14 @@
   --amber-500: #f6b52f;
 
   /* Neutrals — warm cream page, navy-leaning ink (reference --ink / --muted
-     / --line). Muted/faint keep the reference hue but sit one step darker so
-     body copy, hints and metadata still clear WCAG AA (4.5:1) on every
-     surface, not just on white. */
+     / --line). Muted/faint keep the reference hue but sit deep enough to
+     clear WCAG AA (4.5:1) not only on white but on the tinted surfaces they
+     actually appear on (cream page, sunken panels, teal/brand tints), while
+     staying lighter than --ink-soft so the text hierarchy still reads. */
   --ink: #102b48;
   --ink-soft: #3c5570;
-  --muted: #617486;
-  --faint: #7d8f99;
+  --muted: #556878;
+  --faint: #5f7183;
   /* Header nav ink straight from the reference (light bar, teal on hover) */
   --nav-ink: #496174;
   --line: #e7ebea;
@@ -42,10 +48,11 @@
   --surface-sunken: #f7faf9;
   --page: #fbfaf7;
 
-  /* Support colors */
-  --amber-700: #9a6a0f;
+  /* Support colors — the *-700 steps are the text-safe versions of each tint
+     (each clears 4.5:1 on its own *-100 background chip). */
+  --amber-700: #84590a;
   --amber-100: #fff1cc;
-  --blue-700: #3f74a8;
+  --blue-700: #3a6b9b;
   --blue-100: #e6eff8;
   --green-700: #1d6b4f;
   --green-100: #e7f5ef;
@@ -78,6 +85,14 @@
   --space-7: 48px;
   --space-8: 72px;
   --space-9: 104px;
+
+  /* Section rhythm — the public site's bands compose only from these steps,
+     so the page keeps one vertical cadence instead of per-section guesses
+     (the drifted 52/58/88 magic numbers are gone). Larger than the component
+     scale on purpose: this is air between bands, not padding inside them. */
+  --section-y-tight: var(--space-7); /* 48px — utility strips */
+  --section-y: var(--space-8); /* 72px — standard bands */
+  --section-y-roomy: 96px; /* flagship bands (storefront, care journey) */
 
   /* Radii — the reference's tighter geometry (6/9/12/15px), not the old
      soft 8/12/16/22px set. */
@@ -146,7 +161,7 @@ body {
      one faint navy radial anchoring opposite corners. Static (no cost),
      non-repeating, and quiet enough to never compete with content. */
   background:
-    radial-gradient(1100px 620px at 88% -8%, rgba(0, 169, 157, 0.055), transparent 62%),
+    radial-gradient(1100px 620px at 88% -8%, rgba(0, 120, 111, 0.055), transparent 62%),
     radial-gradient(900px 560px at -6% 30%, rgba(12, 41, 71, 0.05), transparent 60%),
     var(--page);
   background-attachment: fixed;
@@ -269,7 +284,7 @@ a {
    decorative only, non-interactive). Applied via body class + pseudo layers. */
 body.has-ambient-bg {
   background:
-    radial-gradient(1100px 480px at 88% -120px, rgba(0, 169, 157, 0.055), transparent 62%),
+    radial-gradient(1100px 480px at 88% -120px, rgba(0, 120, 111, 0.055), transparent 62%),
     radial-gradient(900px 420px at -140px 30%, rgba(58, 107, 150, 0.05), transparent 60%),
     radial-gradient(720px 520px at 108% 78%, rgba(246, 181, 47, 0.035), transparent 58%),
     var(--page);
@@ -280,7 +295,7 @@ body.has-ambient-bg {
    no surface reads as a flat empty field. */
 body.has-site-wash {
   background:
-    radial-gradient(1000px 440px at 90% -140px, rgba(0, 169, 157, 0.06), transparent 62%),
+    radial-gradient(1000px 440px at 90% -140px, rgba(0, 120, 111, 0.06), transparent 62%),
     radial-gradient(880px 460px at -160px 12%, rgba(58, 107, 150, 0.045), transparent 60%),
     radial-gradient(760px 560px at 106% 82%, rgba(246, 181, 47, 0.03), transparent 58%),
     var(--page);
@@ -298,7 +313,7 @@ body.has-site-wash {
   width: 560px;
   height: 560px;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 32%, rgba(0, 169, 157, 0.05), transparent 68%);
+  background: radial-gradient(circle at 32% 32%, rgba(0, 120, 111, 0.05), transparent 68%);
   pointer-events: none;
 }
 
@@ -529,7 +544,7 @@ body.has-site-wash {
 
 .input:focus {
   border-color: var(--teal-600);
-  outline: 3px solid rgba(0, 169, 157, 0.2);
+  outline: 3px solid rgba(0, 120, 111, 0.22);
   outline-offset: 0;
 }
 
@@ -2094,7 +2109,7 @@ video.testimonial-media {
 
 .search-field:focus-within {
   border-color: var(--teal-600);
-  box-shadow: 0 0 0 4px rgba(0, 169, 157, 0.16);
+  box-shadow: 0 0 0 4px rgba(0, 120, 111, 0.16);
 }
 
 .search-field-icon {
@@ -2257,7 +2272,7 @@ video.testimonial-media {
   width: 46px;
   height: 46px;
   margin-bottom: 4px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--teal-50);
   color: var(--teal-600);
 }
@@ -2338,7 +2353,7 @@ video.testimonial-media {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(900px 380px at 92% -10%, rgba(0, 169, 157, 0.1), transparent 60%),
+    radial-gradient(900px 380px at 92% -10%, rgba(0, 120, 111, 0.1), transparent 60%),
     radial-gradient(700px 420px at -10% 110%, rgba(246, 181, 47, 0.08), transparent 55%);
   pointer-events: none;
 }
@@ -2439,7 +2454,7 @@ video.testimonial-media {
   width: 38px;
   height: 38px;
   flex: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--teal-100);
   color: var(--teal-700);
 }
@@ -2492,7 +2507,7 @@ video.testimonial-media {
   height: 340px;
   overflow: hidden;
   border: 3px solid #ffffff;
-  border-radius: 18px;
+  border-radius: var(--radius-xl);
   background: #e8f1f0;
   box-shadow: 0 20px 45px rgba(12, 41, 71, 0.12);
 }
@@ -2539,7 +2554,7 @@ video.testimonial-media {
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  border-radius: 24px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.96);
   color: var(--brand-800);
   font-size: 11px;
@@ -2563,7 +2578,7 @@ video.testimonial-media {
   gap: 12px;
   padding: 14px 16px;
   border: 1px solid #e5eee9;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   box-shadow: 0 6px 18px rgba(12, 41, 71, 0.04);
 }
@@ -2574,7 +2589,7 @@ video.testimonial-media {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--teal-50);
   color: var(--teal-600);
 }
@@ -2599,7 +2614,7 @@ video.testimonial-media {
 
 /* Demo-style section headings, category cards, promo carousel, store grid */
 .quick-section {
-  padding: 52px 0 58px;
+  padding: var(--section-y-tight) 0;
   background: var(--surface);
 }
 
@@ -2635,8 +2650,11 @@ video.testimonial-media {
   color: var(--teal-600);
 }
 
+/* Light sections need the deep amber: the bright --amber-500 kicker only
+   reaches ~1.7:1 on cream. The navy promo band re-lightens it locally
+   (see styles/patient.css) where the light amber is the readable one. */
 .eyebrow.yellow-text {
-  color: var(--amber-500);
+  color: var(--amber-700);
 }
 
 .promo-tag {
@@ -2676,7 +2694,7 @@ video.testimonial-media {
   min-height: 167px;
   padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--surface);
   text-align: left;
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease;
@@ -2690,7 +2708,7 @@ video.testimonial-media {
 
 .category-card.featured-category {
   border-color: var(--teal-600);
-  box-shadow: 0 10px 24px rgba(0, 169, 157, 0.12);
+  box-shadow: 0 10px 24px rgba(0, 120, 111, 0.12);
 }
 
 /* Reference category palette: five pastel tones cycle down the grid, with the
@@ -2732,7 +2750,7 @@ video.testimonial-media {
   height: 104px;
   margin-bottom: 12px;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--surface-sunken);
 }
 
@@ -2780,7 +2798,7 @@ video.testimonial-media {
 
 .promo-carousel-wrap {
   position: relative;
-  border-radius: 18px;
+  border-radius: var(--radius-xl);
   background: var(--brand-800);
   box-shadow: 0 16px 40px rgba(12, 41, 71, 0.12);
 }
@@ -2863,7 +2881,7 @@ video.testimonial-media {
   flex-direction: column;
   justify-content: center;
   /* Horizontal padding clears the floating edge arrows (16px + 44px wide). */
-  padding: 52px 72px;
+  padding: var(--space-7) 72px;
 }
 
 .promo-content h2 {
@@ -2990,13 +3008,13 @@ video.testimonial-media {
 
 .carousel-dot.active {
   width: 28px;
-  border-radius: 10px;
+  border-radius: var(--radius-pill);
   background: var(--amber-500);
 }
 
 /* Store section (popular medicines) */
 .store-section {
-  padding: 88px 0 96px;
+  padding: var(--section-y-roomy) 0;
   background: var(--surface);
 }
 
@@ -3053,7 +3071,7 @@ video.testimonial-media {
 
 /* Care services + doctor previews + prescription CTA */
 .care-services {
-  padding: 72px 0;
+  padding: var(--section-y) 0;
   background: var(--teal-50);
 }
 
@@ -3088,7 +3106,7 @@ video.testimonial-media {
   margin-top: 10px;
   padding: 11px 15px;
   border: 1px solid var(--teal-600);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--teal-700);
   font-size: 12px;
@@ -3105,7 +3123,7 @@ video.testimonial-media {
   gap: 16px;
   padding: 20px 18px;
   border: 1px solid #e6eeeb;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
 }
 
@@ -3186,7 +3204,7 @@ video.testimonial-media {
   gap: 32px;
   padding: 32px 40px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: var(--surface);
   box-shadow: 0 12px 36px rgba(12, 41, 71, 0.06);
 }
@@ -3220,7 +3238,7 @@ video.testimonial-media {
 
 /* Care booking (demo journey section) */
 .booking-section {
-  padding: 88px 0;
+  padding: var(--section-y-roomy) 0;
   background: #fffaf0;
 }
 
@@ -3254,7 +3272,7 @@ video.testimonial-media {
 .booking-panel {
   padding: 26px;
   border: 1px solid #eee8d6;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: 0 14px 30px rgba(122, 104, 56, 0.06);
 }
@@ -3297,7 +3315,7 @@ video.testimonial-media {
   gap: 8px;
   padding: 12px 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--page);
   color: var(--muted);
 }
@@ -3343,7 +3361,7 @@ video.testimonial-media {
 
 /* Care records (labs) */
 .records-section {
-  padding: 88px 0;
+  padding: var(--section-y-roomy) 0;
   background: var(--brand-50);
 }
 
@@ -3376,7 +3394,7 @@ video.testimonial-media {
 
 .report-list {
   padding: 9px 22px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: 0 10px 23px rgba(34, 78, 75, 0.08);
 }
@@ -3403,7 +3421,7 @@ video.testimonial-media {
   width: 38px;
   height: 38px;
   flex: none;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
 }
 
 .report-icon.blue {
@@ -3484,7 +3502,7 @@ video.testimonial-media {
   width: 42px;
   height: 42px;
   margin-bottom: 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--teal-50);
   color: var(--teal-600);
 }
@@ -4121,7 +4139,7 @@ video.testimonial-media {
   padding: var(--space-8) 0;
   color: #fff;
   background:
-    radial-gradient(900px 320px at 110% 0%, rgba(0, 169, 157, 0.32), transparent 60%),
+    radial-gradient(900px 320px at 110% 0%, rgba(0, 120, 111, 0.32), transparent 60%),
     linear-gradient(120deg, var(--brand-900), var(--brand-800));
 }
 
@@ -4563,7 +4581,7 @@ video.testimonial-media {
 
 .product-skeleton-line {
   height: 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(100deg, var(--surface-sunken) 30%, var(--brand-50) 50%, var(--surface-sunken) 70%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s ease infinite;
@@ -4599,7 +4617,7 @@ video.testimonial-media {
 
 .category-skeleton-line {
   height: 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(100deg, var(--surface-sunken) 30%, var(--brand-50) 50%, var(--surface-sunken) 70%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s ease infinite;
@@ -4631,7 +4649,7 @@ video.testimonial-media {
   margin: -6px -6px 2px;
   border-radius: var(--radius-md);
   background:
-    radial-gradient(140px 60px at 50% 100%, rgba(0, 169, 157, 0.1), transparent 70%),
+    radial-gradient(140px 60px at 50% 100%, rgba(0, 120, 111, 0.1), transparent 70%),
     linear-gradient(160deg, var(--brand-50), var(--surface-sunken));
 }
 
@@ -4747,7 +4765,7 @@ video.testimonial-media {
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
   background:
-    radial-gradient(220px 120px at 50% 100%, rgba(0, 169, 157, 0.12), transparent 70%),
+    radial-gradient(220px 120px at 50% 100%, rgba(0, 120, 111, 0.12), transparent 70%),
     linear-gradient(160deg, var(--brand-50), var(--surface-sunken));
 }
 
@@ -5105,7 +5123,7 @@ video.testimonial-media {
   border-radius: var(--radius-xl);
   color: rgba(255, 255, 255, 0.85);
   background:
-    radial-gradient(640px 260px at 106% 0%, rgba(0, 169, 157, 0.28), transparent 60%),
+    radial-gradient(640px 260px at 106% 0%, rgba(0, 120, 111, 0.28), transparent 60%),
     linear-gradient(120deg, var(--brand-900), var(--brand-800));
 }
 
@@ -5131,7 +5149,7 @@ video.testimonial-media {
 .nextstep-hero-action {
   border-color: transparent;
   background:
-    radial-gradient(640px 260px at 106% 0%, rgba(0, 169, 157, 0.36), transparent 62%),
+    radial-gradient(640px 260px at 106% 0%, rgba(0, 120, 111, 0.36), transparent 62%),
     linear-gradient(120deg, var(--brand-900), var(--brand-700));
 }
 
@@ -6767,11 +6785,8 @@ button.queue-count-card:hover {
   vertical-align: top;
 }
 
-.admin-table tbody tr:hover {
-  background: var(--surface-sunken);
-  transition: background 0.15s ease;
-}
-
+/* Row hover for admin tables is declared once, in the "Tables & queues"
+   section below, so the ops/admin layers cannot drift apart. */
 .admin-table-skeleton .skeleton-text {
   display: block;
   height: 14px;
@@ -6998,7 +7013,7 @@ button.queue-count-card:hover {
 .forecast-horizon {
   display: inline-flex;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface);
   overflow: hidden;
 }
@@ -7069,14 +7084,14 @@ button.queue-count-card:hover {
   display: flex;
   align-items: flex-end;
   background: var(--surface-sunken);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .forecast-bar-fill {
   width: 100%;
   background: var(--brand-600);
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   min-height: 2px;
 }
 
@@ -7282,7 +7297,7 @@ button.queue-count-card:hover {
   .care-services,
   .booking-section,
   .records-section {
-    padding: 52px 0;
+    padding: var(--section-y-tight) 0;
   }
 }
 
@@ -7317,7 +7332,7 @@ button.queue-count-card:hover {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(560px 200px at 100% 0%, rgba(0, 169, 157, 0.07), transparent 60%),
+    radial-gradient(560px 200px at 100% 0%, rgba(0, 120, 111, 0.07), transparent 60%),
     var(--surface);
 }
 
@@ -7593,7 +7608,7 @@ select.input {
 .input:focus-visible,
 .textarea:focus-visible {
   border-color: var(--teal-600);
-  box-shadow: 0 0 0 3px rgba(0, 169, 157, 0.16);
+  box-shadow: 0 0 0 3px rgba(0, 120, 111, 0.16);
   outline: none;
 }
 
@@ -7806,7 +7821,7 @@ select.input {
 .patient-shell-body.consultation-page {
   background:
     linear-gradient(180deg, rgba(225, 242, 250, 0.35), transparent 320px),
-    radial-gradient(720px 300px at 110% -80px, rgba(0, 169, 157, 0.06), transparent 62%);
+    radial-gradient(720px 300px at 110% -80px, rgba(0, 120, 111, 0.06), transparent 62%);
 }
 
 .patient-shell-body.pap-page {
@@ -7818,7 +7833,7 @@ select.input {
 .patient-shell-body.pharmacy-page {
   background:
     linear-gradient(180deg, rgba(211, 239, 234, 0.35), transparent 340px),
-    radial-gradient(760px 320px at 108% -60px, rgba(0, 169, 157, 0.07), transparent 62%);
+    radial-gradient(760px 320px at 108% -60px, rgba(0, 120, 111, 0.07), transparent 62%);
 }
 
 .patient-shell-body.referral-page {
@@ -7871,7 +7886,7 @@ select.input {
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
   background:
-    radial-gradient(640px 240px at 100% 0%, rgba(0, 169, 157, 0.08), transparent 60%),
+    radial-gradient(640px 240px at 100% 0%, rgba(0, 120, 111, 0.08), transparent 60%),
     radial-gradient(420px 200px at 0% 100%, rgba(58, 107, 150, 0.05), transparent 65%),
     var(--surface);
   box-shadow: var(--shadow-xs);
@@ -7961,7 +7976,7 @@ select.input {
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(280px 120px at 50% 0%, rgba(0, 169, 157, 0.05), transparent 70%),
+    radial-gradient(280px 120px at 50% 0%, rgba(0, 120, 111, 0.05), transparent 70%),
     var(--surface-sunken);
   box-shadow: none;
 }
@@ -7969,11 +7984,11 @@ select.input {
 .empty-state-icon {
   width: 54px;
   height: 54px;
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: linear-gradient(150deg, var(--teal-50), #fff);
   border: 1px solid var(--teal-100);
   color: var(--teal-600);
-  box-shadow: 0 2px 6px rgba(0, 169, 157, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 120, 111, 0.1);
 }
 
 .empty-state-title {
@@ -8091,7 +8106,7 @@ select.input {
   border: 1px solid var(--teal-100);
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, var(--teal-50), var(--surface) 70%);
-  box-shadow: 0 8px 22px -10px rgba(0, 169, 157, 0.35);
+  box-shadow: 0 8px 22px -10px rgba(0, 120, 111, 0.35);
 }
 
 .journey-stage-row.is-current .journey-stage-marker {
@@ -8743,7 +8758,7 @@ select.input {
   grid-column: 1 / -1;
   border-color: var(--teal-100);
   background:
-    radial-gradient(480px 180px at 100% 0%, rgba(0, 169, 157, 0.07), transparent 60%),
+    radial-gradient(480px 180px at 100% 0%, rgba(0, 120, 111, 0.07), transparent 60%),
     var(--surface);
 }
 
@@ -8846,7 +8861,7 @@ select.input {
 
 .page-hero-teal {
   background:
-    radial-gradient(800px 320px at 95% -10%, rgba(0, 169, 157, 0.12), transparent 60%),
+    radial-gradient(800px 320px at 95% -10%, rgba(0, 120, 111, 0.12), transparent 60%),
     radial-gradient(600px 240px at 0% 100%, rgba(58, 107, 150, 0.05), transparent 65%),
     #f2f8f7;
   border-color: #d1e7e3;
@@ -8855,7 +8870,7 @@ select.input {
 .page-hero-blue {
   background:
     radial-gradient(800px 320px at 95% -10%, rgba(21, 64, 106, 0.1), transparent 60%),
-    radial-gradient(600px 240px at 0% 100%, rgba(0, 169, 157, 0.06), transparent 65%),
+    radial-gradient(600px 240px at 0% 100%, rgba(0, 120, 111, 0.06), transparent 65%),
     #eef4f9;
   border-color: #d2e1ed;
 }
@@ -8863,7 +8878,7 @@ select.input {
 .page-hero-lavender {
   background:
     radial-gradient(800px 320px at 95% -10%, rgba(100, 80, 160, 0.09), transparent 60%),
-    radial-gradient(600px 240px at 0% 100%, rgba(0, 169, 157, 0.05), transparent 65%),
+    radial-gradient(600px 240px at 0% 100%, rgba(0, 120, 111, 0.05), transparent 65%),
     #f4f3f9;
   border-color: #ddd9ed;
 }
@@ -8871,14 +8886,14 @@ select.input {
 .page-hero-cream {
   background:
     radial-gradient(800px 320px at 95% -10%, rgba(246, 181, 47, 0.1), transparent 60%),
-    radial-gradient(600px 240px at 0% 100%, rgba(0, 169, 157, 0.06), transparent 65%),
+    radial-gradient(600px 240px at 0% 100%, rgba(0, 120, 111, 0.06), transparent 65%),
     #fdfaf3;
   border-color: #ede5cf;
 }
 
 .page-hero-brand {
   background:
-    radial-gradient(900px 380px at 92% -10%, rgba(0, 169, 157, 0.35), transparent 60%),
+    radial-gradient(900px 380px at 92% -10%, rgba(0, 120, 111, 0.35), transparent 60%),
     linear-gradient(135deg, var(--brand-900), var(--brand-800));
   border-color: var(--brand-700);
   color: #ffffff;
@@ -9046,7 +9061,7 @@ select.input {
 .feature-card.is-selected {
   border-color: var(--teal-600);
   background: linear-gradient(145deg, var(--teal-50), var(--surface));
-  box-shadow: 0 6px 20px rgba(0, 169, 157, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 120, 111, 0.15);
 }
 
 .feature-card-header {
@@ -9398,7 +9413,7 @@ select.input {
   overflow-y: auto;
   max-height: 460px;
   background:
-    radial-gradient(400px 200px at 100% 0%, rgba(0, 169, 157, 0.04), transparent 70%),
+    radial-gradient(400px 200px at 100% 0%, rgba(0, 120, 111, 0.04), transparent 70%),
     #fafcfd;
 }
 
@@ -9497,7 +9512,7 @@ select.input {
 .mode-card.is-active {
   border-color: var(--teal-600);
   background: var(--teal-50);
-  box-shadow: 0 3px 10px rgba(0, 169, 157, 0.12);
+  box-shadow: 0 3px 10px rgba(0, 120, 111, 0.12);
 }
 
 .mode-card > svg {
@@ -9586,7 +9601,7 @@ select.input {
   border: 1px solid #d7e4ec;
   border-radius: var(--radius-xl);
   background:
-    radial-gradient(640px 260px at 100% 0%, rgba(0, 169, 157, 0.05), transparent 70%),
+    radial-gradient(640px 260px at 100% 0%, rgba(0, 120, 111, 0.05), transparent 70%),
     linear-gradient(180deg, var(--bg-soft-blue), rgba(251, 253, 254, 0.55) 340px);
 }
 
